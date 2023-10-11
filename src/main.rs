@@ -325,7 +325,8 @@ impl NumericInputOp {
                 let mode = state.stack.mode();
                 let base = state.base;
                 check_base(digit, min_base, mode, base)?;
-                state.process_digit(digit)
+                state.process_digit(digit)?;
+                state.handle_nans()
             }
             NumericInputOp::Byte(op) => {
                 let digit = op.classify();
@@ -544,8 +545,8 @@ enum OtherScientificUnaryOp {
     Log2 = "log2",
     Square = "x^2",
     Cube = "x^3",
-    Sqrt = "2vx",
-    Cbrt = "3vx",
+    Sqrt = "2Vx",
+    Cbrt = "3Vx",
     Inverse = "1/x",
     Factorial = "x!",
     Sinh = "sinh",
@@ -680,7 +681,8 @@ enum ScientificBinaryOp {
     XToY = "x^y",
     YToX = "y^x",
     LogYX = "logy",
-    YthRootX = "yvx",
+    YthRootX = "yVx",
+    EE = "EE",
 }
 
 impl ScientificBinaryOp {
@@ -703,6 +705,7 @@ impl ScientificBinaryOp {
             }
             ScientificBinaryOp::LogYX => x.log(y),
             ScientificBinaryOp::YthRootX => x.powf(1.0 / y),
+            ScientificBinaryOp::EE => x * 10.0f64.powf(y),
         }
     }
 }
@@ -745,12 +748,10 @@ enum ManipulatorOp {
     ProgrammerUnary(ProgrammerUnaryOp),
     UniversalBinary(UniversalBinaryOp),
     ScientificBinary(ScientificBinaryOp),
-    EE = "EE",
     ProgrammerBinary(ProgrammerBinaryOp),
 }
 
 impl ManipulatorOp {
-    // todo errors?
     fn act(self, state: &mut State) -> Result<(), String> {
         match self {
             ManipulatorOp::Mode(op) => {
@@ -850,7 +851,40 @@ impl ManipulatorOp {
                     Err("Prog binary not available in current mode".to_string())
                 }
             }
-            ManipulatorOp::EE => todo!(),
+        }
+    }
+}
+
+#[derive(Copy, Clone)]
+#[operation]
+enum OutputOp {
+    Ascii = "[ASCII]",
+    Unicode = "[Unicode]",
+    LargeType = "Large-Type",
+}
+
+impl OutputOp {
+    fn get_string(&self, state: &State) -> Result<String, String> {
+        match self {
+            OutputOp::Ascii => {
+                if let Mode::Programmer = state.stack.mode() {
+                    todo!()
+                } else {
+                    Err("Ascii output only available in programmer mode".to_string())
+                }
+            }
+            OutputOp::Unicode => {
+                if let Mode::Programmer = state.stack.mode() {
+                    todo!()
+                } else {
+                    Err("Unicode output only available in programmer mode".to_string())
+                }
+            }
+            OutputOp::LargeType => match (state.base, state.stack.mode()) {
+                (Base::Octal, Mode::Programmer) => todo!(),
+                (Base::Hexadecimal, Mode::Programmer) => todo!(),
+                _ => todo!(),
+            },
         }
     }
 }
@@ -860,16 +894,20 @@ impl ManipulatorOp {
 enum Op {
     NumericInput(NumericInputOp),
     Manipulator(ManipulatorOp),
+    Output(OutputOp),
 }
 
 impl Op {
-    // todo errors?
     fn act(self, state: &mut State) -> Result<(), String> {
         match self {
-            Op::NumericInput(op) => op.process_digit(state), // todo something about nans
+            Op::NumericInput(op) => op.process_digit(state),
             Op::Manipulator(op) => {
                 state.input = InputState::Done;
                 op.act(state)
+            }
+            Op::Output(op) => {
+                print!("{}", op.get_string(state)?);
+                Ok(())
             }
         }
     }
