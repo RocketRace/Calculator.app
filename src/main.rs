@@ -4,7 +4,6 @@ use std::{
     io::{stdin, Read},
     mem::transmute,
     process::exit,
-    ptr::addr_of,
     str::FromStr,
 };
 
