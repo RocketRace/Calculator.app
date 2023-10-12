@@ -864,26 +864,39 @@ enum OutputOp {
 }
 
 impl OutputOp {
-    fn get_string(&self, state: &State) -> Result<String, String> {
+    fn get_string(&self, state: &mut State) -> Result<String, String> {
         match self {
             OutputOp::Ascii => {
+                let x = *state.stack.peek(0);
                 if let Mode::Programmer = state.stack.mode() {
-                    todo!()
+                    Ok(((x & 0x7f) as u8 as char).to_string())
                 } else {
-                    Err("Ascii output only available in programmer mode".to_string())
+                    Err("ASCII output only available in programmer mode".to_string())
                 }
             }
             OutputOp::Unicode => {
+                let x = *state.stack.peek(0);
                 if let Mode::Programmer = state.stack.mode() {
-                    todo!()
+                    char::from_u32(x as u32 & 0x10ffff)
+                        .map(|x| x.to_string())
+                        .ok_or("32-bit value is not a valid codepoint".to_string())
                 } else {
                     Err("Unicode output only available in programmer mode".to_string())
                 }
             }
             OutputOp::LargeType => match (state.base, state.stack.mode()) {
-                (Base::Octal, Mode::Programmer) => todo!(),
-                (Base::Hexadecimal, Mode::Programmer) => todo!(),
-                _ => todo!(),
+                (Base::Octal, Mode::Programmer) => {
+                    let x = *state.stack.peek(0);
+                    Ok(format!("{x:o}\n"))
+                }
+                (Base::Hexadecimal, Mode::Programmer) => {
+                    let x = *state.stack.peek(0);
+                    Ok(format!("{x:x}\n"))
+                }
+                _ => {
+                    let x = *state.stack.peekf(0);
+                    Ok(format!("{x}\n"))
+                }
             },
         }
     }
@@ -970,6 +983,4 @@ fn main() {
             exit(1);
         }
     }
-
-    dbg!(state);
 }
