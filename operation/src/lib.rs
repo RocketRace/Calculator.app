@@ -21,6 +21,7 @@ pub fn operation(args: TokenStream, input: TokenStream) -> TokenStream {
         panic!("Expected no args")
     }
 
+    let metas = target.attrs;
     let name = target.ident;
 
     let variants: Vec<_> = target
@@ -107,6 +108,7 @@ pub fn operation(args: TokenStream, input: TokenStream) -> TokenStream {
         .collect();
 
     quote! {
+        #(#metas)*
         enum #name {
             #(#definitions,)*
         }

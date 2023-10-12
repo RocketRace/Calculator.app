@@ -237,8 +237,8 @@ impl State {
     }
 }
 
-#[derive(Copy, Clone)]
 #[operation]
+#[derive(Copy, Clone)]
 enum DigitOp {
     Zero = "0",
     One = "1",
@@ -281,8 +281,8 @@ impl DigitOp {
     }
 }
 
-#[derive(Copy, Clone)]
 #[operation]
+#[derive(Copy, Clone)]
 enum ByteOp {
     ZeroZero = "00",
     FF = "ff",
@@ -297,8 +297,8 @@ impl ByteOp {
     }
 }
 
-#[derive(Copy, Clone)]
 #[operation]
+#[derive(Copy, Clone)]
 enum NumericInputOp {
     Digit(DigitOp),
     Byte(ByteOp),
@@ -361,8 +361,8 @@ impl NumericInputOp {
     }
 }
 
-#[derive(Copy, Clone)]
 #[operation]
+#[derive(Copy, Clone)]
 enum ModeOp {
     Basic = "Basic",
     Scientific = "Scientific",
@@ -381,8 +381,8 @@ impl ModeOp {
     }
 }
 
-#[derive(Copy, Clone)]
 #[operation]
+#[derive(Copy, Clone)]
 enum RpnOp {
     Swap = "x<->y",
     RotateDown = "Rv",
@@ -408,8 +408,8 @@ impl RpnOp {
     }
 }
 
-#[derive(Copy, Clone)]
 #[operation]
+#[derive(Copy, Clone)]
 enum MemoryOp {
     Recall = "mr",
     Add = "m+",
@@ -428,8 +428,8 @@ impl MemoryOp {
     }
 }
 
-#[derive(Copy, Clone)]
 #[operation]
+#[derive(Copy, Clone)]
 enum AngleOp {
     Rad = "Rad",
     Deg = "Deg",
@@ -444,8 +444,8 @@ impl AngleOp {
     }
 }
 
-#[derive(Copy, Clone)]
 #[operation]
+#[derive(Copy, Clone)]
 enum BaseOp {
     Octal = "[8]",
     Decimal = "[10]",
@@ -462,8 +462,8 @@ impl BaseOp {
     }
 }
 
-#[derive(Copy, Clone)]
 #[operation]
+#[derive(Copy, Clone)]
 enum NumericUnaryOp {
     Negate = "+/-",
     Percent = "%",
@@ -478,8 +478,8 @@ impl NumericUnaryOp {
     }
 }
 
-#[derive(Copy, Clone)]
 #[operation]
+#[derive(Copy, Clone)]
 enum ScientificConstOp {
     Rand = "Rand",
     E = "E",
@@ -496,8 +496,8 @@ impl ScientificConstOp {
     }
 }
 
-#[derive(Copy, Clone)]
 #[operation]
+#[derive(Copy, Clone)]
 enum TrigOp {
     #[arg = |x| x.sin()]
     Sin = "sin",
@@ -517,8 +517,8 @@ impl TrigOp {
     }
 }
 
-#[derive(Copy, Clone)]
 #[operation]
+#[derive(Copy, Clone)]
 enum InverseTrigOp {
     Arcsin = "sin^-1",
     Arccos = "cos^-1",
@@ -534,8 +534,8 @@ impl InverseTrigOp {
         }
     }
 }
-#[derive(Copy, Clone)]
 #[operation]
+#[derive(Copy, Clone)]
 enum OtherScientificUnaryOp {
     Exp10 = "10^x",
     Log10 = "log10",
@@ -582,8 +582,8 @@ impl OtherScientificUnaryOp {
     }
 }
 
-#[derive(Copy, Clone)]
 #[operation]
+#[derive(Copy, Clone)]
 enum ScientificUnaryOp {
     Trig(TrigOp),
     InverseTrig(InverseTrigOp),
@@ -612,8 +612,8 @@ impl ScientificUnaryOp {
     }
 }
 
-#[derive(Copy, Clone)]
 #[operation]
+#[derive(Copy, Clone)]
 enum ProgrammerUnaryOp {
     RotateLeft = "RoL",
     RotateRight = "RoR",
@@ -645,8 +645,8 @@ impl ProgrammerUnaryOp {
     }
 }
 
-#[derive(Copy, Clone)]
 #[operation]
+#[derive(Copy, Clone)]
 enum UniversalBinaryOp {
     Plus = "+",
     Minus = "-",
@@ -675,8 +675,8 @@ impl UniversalBinaryOp {
     }
 }
 
-#[derive(Copy, Clone)]
 #[operation]
+#[derive(Copy, Clone)]
 enum ScientificBinaryOp {
     XToY = "x^y",
     YToX = "y^x",
@@ -710,8 +710,8 @@ impl ScientificBinaryOp {
     }
 }
 
-#[derive(Copy, Clone)]
 #[operation]
+#[derive(Copy, Clone)]
 enum ProgrammerBinaryOp {
     And = "AND",
     Or = "OR",
@@ -734,8 +734,246 @@ impl ProgrammerBinaryOp {
     }
 }
 
-#[derive(Copy, Clone)]
+trait AffineSiUnit {
+    fn si_to_self(&self) -> (f64, f64);
+}
+
 #[operation]
+#[derive(Clone, Copy)]
+enum AreaConversion {
+    Acres = "Acres",
+    Ares = "Ares",
+    Decares = "Decares",
+    Hectares = "Hectares",
+    SquareCentimeters = "Square-Centimeters",
+    SquareFeet = "Square-Feet",
+    SquareKilometers = "Square-Kilometers",
+    SquareMeters = "Square-Meters",
+    SquareMiles = "Square-Miles",
+    SquareMillimeters = "Square-Millimeters",
+    SquareYard = "Square-Yards",
+}
+
+impl AffineSiUnit for AreaConversion {
+    fn si_to_self(&self) -> (f64, f64) {
+        match self {
+            AreaConversion::Acres => (2.471_053_81e-4, 0.0),
+            AreaConversion::Ares => (1e-2, 0.0),
+            AreaConversion::Decares => (1e-3, 0.0),
+            AreaConversion::Hectares => (1e-4, 0.0),
+            AreaConversion::SquareCentimeters => (1e4, 0.0),
+            AreaConversion::SquareFeet => (10.763_911, 0.0),
+            AreaConversion::SquareKilometers => (1e-6, 0.0),
+            AreaConversion::SquareMeters => (1.0, 0.0),
+            AreaConversion::SquareMiles => (3.861_021_58e-7, 0.0),
+            AreaConversion::SquareMillimeters => (1e6, 0.0),
+            AreaConversion::SquareYard => (1.195_990, 0.0),
+        }
+    }
+}
+
+#[operation]
+#[derive(Clone, Copy)]
+enum EnergyOrWorkConversion {
+    Btus = "BTUs",
+    Calories = "Calories",
+    Ergs = "Ergs",
+    FootPounds = "Foot-Pounds",
+    Joules = "Joules",
+    KilogramCalories = "Kilogram-Calories",
+    KilogramMeters = "Kilogram-Meters",
+    KilowattHours = "Kilowatt-Hours",
+    NewtonMeters = "Newton-Meters",
+}
+
+impl AffineSiUnit for EnergyOrWorkConversion {
+    fn si_to_self(&self) -> (f64, f64) {
+        match self {
+            EnergyOrWorkConversion::Btus => (9.478_2e-4, 0.0),
+            EnergyOrWorkConversion::Calories => (0.2390, 0.0),
+            EnergyOrWorkConversion::Ergs => (1e7, 0.0),
+            EnergyOrWorkConversion::FootPounds => (0.7376, 0.0),
+            EnergyOrWorkConversion::Joules => (1.0, 0.0),
+            EnergyOrWorkConversion::KilogramCalories => (2.388_458_97e-4, 0.0),
+            EnergyOrWorkConversion::KilogramMeters => (0.101971621, 0.0), // this is weird
+            EnergyOrWorkConversion::KilowattHours => (2.7778e-7, 0.0),
+            EnergyOrWorkConversion::NewtonMeters => (1.0, 0.0),
+        }
+    }
+}
+
+#[operation]
+#[derive(Clone, Copy)]
+enum LengthConversion {
+    Centimeters = "Centimeters",
+    Feet = "Feet",
+    Inches = "Inches",
+    Kilometers = "Kilometers",
+    Meters = "Meters",
+    Miles = "Miles",
+    Millimeters = "Millimeters",
+    NauticalMiles = "Nautical-Miles",
+    Yards = "Yards",
+}
+
+impl AffineSiUnit for LengthConversion {
+    fn si_to_self(&self) -> (f64, f64) {
+        match self {
+            LengthConversion::Centimeters => (1e2, 0.0),
+            LengthConversion::Feet => (3.2808, 0.0),
+            LengthConversion::Inches => (39.370, 0.0),
+            LengthConversion::Kilometers => (1e-3, 0.0),
+            LengthConversion::Meters => (1.0, 0.0),
+            LengthConversion::Miles => (6.213_712e-4, 0.0),
+            LengthConversion::Millimeters => (1e3, 0.0),
+            LengthConversion::NauticalMiles => (5.399_6e-4, 0.0),
+            LengthConversion::Yards => (1.0936, 0.0),
+        }
+    }
+}
+
+#[operation]
+#[derive(Clone, Copy)]
+enum PowerConversion {
+    BtusPerMinute = "BTUs/Minute",
+    FootPoundsPerMinute = "Foot-Pounds/Minute",
+    FootPoundsPerSecond = "Foot-Pounds/Second",
+    Horsepower = "Horsepower",
+    Kilowatts = "Kilowatts",
+    Watts = "Watts",
+}
+
+#[operation]
+#[derive(Clone, Copy)]
+enum PressureConversion {
+    Atmospheres = "Atmospheres",
+    Bars = "Bars",
+    InchesOfMercury = "Inches-of-Mercury",
+    MillimetersOfMercuryTorr = "Millimeters-of-Mercury(Torr)",
+    Pascals = "Pascals",
+    PoundsPerSquareFoot = "Pounds/Square-Foot",
+    PoundsPerSquareInch = "Pounds/Square-Inch",
+}
+
+#[operation]
+#[derive(Clone, Copy)]
+enum SpeedConversion {
+    FeetPerMinute = "Feet/Minute",
+    FeetPerSecond = "Feet/Second",
+    KilometersPerHour = "Kilometers/Hour",
+    KilometersPerMinute = "Kilometers/Minute",
+    Knots = "Knots",
+    MetersPerSecond = "Meters/Second",
+    MilesPerHour = "Miles/Hour",
+    MilesPerMinute = "Miles/Minute",
+}
+
+#[operation]
+#[derive(Clone, Copy)]
+enum TemperatureConversion {
+    Celsius = "Celsius",
+    Fahrenheit = "Fahrenheit",
+    Kelvin = "Kelvin",
+}
+
+#[operation]
+#[derive(Clone, Copy)]
+enum TimeConversion {
+    Seconds = "Seconds",
+    Minutes = "Minutes",
+    Hours = "Hours",
+    Days = "Days",
+    Weeks = "Weeks",
+    Years = "Years",
+}
+
+#[operation]
+#[derive(Clone, Copy)]
+enum VolumeConversion {
+    CubicFeet = "Cubic-Feet",
+    CubicMeters = "Cubic-Meters",
+    FluidDramsUs = "Fluid-Drams(US)",
+    FluidOuncesUs = "Fluid-Ounces(US)",
+    GallonsUs = "Gallons(US)",
+    Liters = "Liters",
+    PintsUs = "Pints(US)",
+    QuartsUs = "Quarts(US)",
+}
+
+#[operation]
+#[derive(Clone, Copy)]
+enum WeightsAndMassesConversion {
+    Drams = "Drams",
+    Grams = "Grams",
+    Kilograms = "Kilograms",
+    LongTons = "Long-Tons",
+    Ounces = "Ounces",
+    PoundsUs = "Pounds(US)",
+    ShortTonsUs = "Short-Tons(US)",
+    Slugs = "Slugs",
+    Tonnes = "Tonnes",
+}
+
+macro_rules! generate_conversions {
+    ($(#[$meta:meta])* enum $name:ident {
+        $($field:ident($from:ident, $to:ident)),*
+        $(,)?
+    }) => {
+        $(#[$meta])*
+        enum $name {
+            $($field($from, $to),)*
+        }
+
+        impl FromStr for $name {
+            type Err = ();
+
+            fn from_str(s: &str) -> Result<Self, Self::Err> {
+                if let Some((left, right)) = s.split_once('>') {
+                    $(if let (Ok(from), Ok(to)) = (
+                        <$from>::from_str(left),
+                        <$to>::from_str(right),
+                    ) {
+                        return Ok(Self::$field(from, to));
+                    })*
+                    Err(())
+                } else {
+                    Err(())
+                }
+            }
+        }
+
+        impl ToString for $name {
+            fn to_string(&self) -> String {
+                match self {
+                    $(
+                        ConversionOp::$field(from, to) => {
+                            format!("{}>{}", from.to_string(), to.to_string())
+                        }
+                    )*
+                }
+            }
+        }
+    };
+}
+
+generate_conversions! {
+    #[derive(Clone, Copy)]
+    enum ConversionOp {
+        Area(AreaConversion, AreaConversion),
+        EnergyOrWork(EnergyOrWorkConversion, EnergyOrWorkConversion),
+        Length(LengthConversion, LengthConversion),
+        Power(PowerConversion, PowerConversion),
+        Pressure(PressureConversion, PressureConversion),
+        Speed(SpeedConversion, SpeedConversion),
+        Temperature(TemperatureConversion, TemperatureConversion),
+        Time(TimeConversion, TimeConversion),
+        Volume(VolumeConversion, VolumeConversion),
+        WeightsAndMasses(WeightsAndMassesConversion, WeightsAndMassesConversion),
+    }
+}
+
+#[operation]
+#[derive(Copy, Clone)]
 enum ManipulatorOp {
     Mode(ModeOp),
     Rpn(RpnOp),
@@ -749,6 +987,7 @@ enum ManipulatorOp {
     UniversalBinary(UniversalBinaryOp),
     ScientificBinary(ScientificBinaryOp),
     ProgrammerBinary(ProgrammerBinaryOp),
+    Conversion(ConversionOp),
 }
 
 impl ManipulatorOp {
@@ -851,12 +1090,19 @@ impl ManipulatorOp {
                     Err("Prog binary not available in current mode".to_string())
                 }
             }
+            ManipulatorOp::Conversion(op) => {
+                if let Mode::Programmer = state.stack.mode() {
+                    Err("Unit conversions not available in programmer mode".to_string())
+                } else {
+                    todo!()
+                }
+            }
         }
     }
 }
 
-#[derive(Copy, Clone)]
 #[operation]
+#[derive(Copy, Clone)]
 enum OutputOp {
     Ascii = "[ASCII]",
     Unicode = "[Unicode]",
@@ -902,8 +1148,8 @@ impl OutputOp {
     }
 }
 
-#[derive(Copy, Clone)]
 #[operation]
+#[derive(Copy, Clone)]
 enum Op {
     NumericInput(NumericInputOp),
     Manipulator(ManipulatorOp),
