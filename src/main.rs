@@ -499,11 +499,8 @@ impl ScientificConstOp {
 #[operation]
 #[derive(Copy, Clone)]
 enum TrigOp {
-    #[arg = |x| x.sin()]
     Sin = "sin",
-    #[arg = |x| x.cos()]
     Cos = "cos",
-    #[arg = |x| x.tan()]
     Tan = "tan",
 }
 
