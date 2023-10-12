@@ -734,8 +734,13 @@ impl ProgrammerBinaryOp {
     }
 }
 
-trait AffineSiUnit {
-    fn si_to_self(&self) -> (f64, f64);
+trait AffineUnit {
+    fn to_self(&self) -> (f64, f64) {
+        (self.to_self_proportional(), 0.0)
+    }
+    fn to_self_proportional(&self) -> f64 {
+        self.to_self().0
+    }
 }
 
 #[operation]
@@ -754,20 +759,20 @@ enum AreaConversion {
     SquareYard = "Square-Yards",
 }
 
-impl AffineSiUnit for AreaConversion {
-    fn si_to_self(&self) -> (f64, f64) {
+impl AffineUnit for AreaConversion {
+    fn to_self_proportional(&self) -> f64 {
         match self {
-            AreaConversion::Acres => (2.471_053_81e-4, 0.0),
-            AreaConversion::Ares => (1e-2, 0.0),
-            AreaConversion::Decares => (1e-3, 0.0),
-            AreaConversion::Hectares => (1e-4, 0.0),
-            AreaConversion::SquareCentimeters => (1e4, 0.0),
-            AreaConversion::SquareFeet => (10.763_911, 0.0),
-            AreaConversion::SquareKilometers => (1e-6, 0.0),
-            AreaConversion::SquareMeters => (1.0, 0.0),
-            AreaConversion::SquareMiles => (3.861_021_58e-7, 0.0),
-            AreaConversion::SquareMillimeters => (1e6, 0.0),
-            AreaConversion::SquareYard => (1.195_990, 0.0),
+            AreaConversion::Acres => 2.471_053_81e-4,
+            AreaConversion::Ares => 1e-2,
+            AreaConversion::Decares => 1e-3,
+            AreaConversion::Hectares => 1e-4,
+            AreaConversion::SquareCentimeters => 1e4,
+            AreaConversion::SquareFeet => 10.763_911,
+            AreaConversion::SquareKilometers => 1e-6,
+            AreaConversion::SquareMeters => 1.0,
+            AreaConversion::SquareMiles => 3.861_021_58e-7,
+            AreaConversion::SquareMillimeters => 1e6,
+            AreaConversion::SquareYard => 1.195_990,
         }
     }
 }
@@ -786,18 +791,18 @@ enum EnergyOrWorkConversion {
     NewtonMeters = "Newton-Meters",
 }
 
-impl AffineSiUnit for EnergyOrWorkConversion {
-    fn si_to_self(&self) -> (f64, f64) {
+impl AffineUnit for EnergyOrWorkConversion {
+    fn to_self_proportional(&self) -> f64 {
         match self {
-            EnergyOrWorkConversion::Btus => (9.478_2e-4, 0.0),
-            EnergyOrWorkConversion::Calories => (0.2390, 0.0),
-            EnergyOrWorkConversion::Ergs => (1e7, 0.0),
-            EnergyOrWorkConversion::FootPounds => (0.7376, 0.0),
-            EnergyOrWorkConversion::Joules => (1.0, 0.0),
-            EnergyOrWorkConversion::KilogramCalories => (2.388_458_97e-4, 0.0),
-            EnergyOrWorkConversion::KilogramMeters => (0.101971621, 0.0), // this is weird
-            EnergyOrWorkConversion::KilowattHours => (2.7778e-7, 0.0),
-            EnergyOrWorkConversion::NewtonMeters => (1.0, 0.0),
+            EnergyOrWorkConversion::Btus => 9.478_2e-4,
+            EnergyOrWorkConversion::Calories => 0.2390,
+            EnergyOrWorkConversion::Ergs => 1e7,
+            EnergyOrWorkConversion::FootPounds => 0.7376,
+            EnergyOrWorkConversion::Joules => 1.0,
+            EnergyOrWorkConversion::KilogramCalories => 2.388_458_97e-4,
+            EnergyOrWorkConversion::KilogramMeters => 0.101971621, // this is weird
+            EnergyOrWorkConversion::KilowattHours => 2.7778e-7,
+            EnergyOrWorkConversion::NewtonMeters => 1.0,
         }
     }
 }
@@ -816,18 +821,18 @@ enum LengthConversion {
     Yards = "Yards",
 }
 
-impl AffineSiUnit for LengthConversion {
-    fn si_to_self(&self) -> (f64, f64) {
+impl AffineUnit for LengthConversion {
+    fn to_self_proportional(&self) -> f64 {
         match self {
-            LengthConversion::Centimeters => (1e2, 0.0),
-            LengthConversion::Feet => (3.2808, 0.0),
-            LengthConversion::Inches => (39.370, 0.0),
-            LengthConversion::Kilometers => (1e-3, 0.0),
-            LengthConversion::Meters => (1.0, 0.0),
-            LengthConversion::Miles => (6.213_712e-4, 0.0),
-            LengthConversion::Millimeters => (1e3, 0.0),
-            LengthConversion::NauticalMiles => (5.399_6e-4, 0.0),
-            LengthConversion::Yards => (1.0936, 0.0),
+            LengthConversion::Centimeters => 1e2,
+            LengthConversion::Feet => 3.2808,
+            LengthConversion::Inches => 39.370,
+            LengthConversion::Kilometers => 1e-3,
+            LengthConversion::Meters => 1.0,
+            LengthConversion::Miles => 6.213_712e-4,
+            LengthConversion::Millimeters => 1e3,
+            LengthConversion::NauticalMiles => 5.399_6e-4,
+            LengthConversion::Yards => 1.0936,
         }
     }
 }
@@ -843,6 +848,19 @@ enum PowerConversion {
     Watts = "Watts",
 }
 
+impl AffineUnit for PowerConversion {
+    fn to_self_proportional(&self) -> f64 {
+        match self {
+            PowerConversion::BtusPerMinute => 5.686_902_721_9e-2,
+            PowerConversion::FootPoundsPerMinute => 44.253_729,
+            PowerConversion::FootPoundsPerSecond => 0.737_562_149_3,
+            PowerConversion::Horsepower => 1.341_022_072e-3,
+            PowerConversion::Kilowatts => 1e-3,
+            PowerConversion::Watts => 1.0,
+        }
+    }
+}
+
 #[operation]
 #[derive(Clone, Copy)]
 enum PressureConversion {
@@ -853,6 +871,20 @@ enum PressureConversion {
     Pascals = "Pascals",
     PoundsPerSquareFoot = "Pounds/Square-Foot",
     PoundsPerSquareInch = "Pounds/Square-Inch",
+}
+
+impl AffineUnit for PressureConversion {
+    fn to_self_proportional(&self) -> f64 {
+        match self {
+            PressureConversion::Atmospheres => 9.869_23e-6,
+            PressureConversion::Bars => 1e-5,
+            PressureConversion::InchesOfMercury => 2.953e-4,
+            PressureConversion::MillimetersOfMercuryTorr => 7.500_64e-4,
+            PressureConversion::Pascals => 1.0,
+            PressureConversion::PoundsPerSquareFoot => 2.088_5e-2,
+            PressureConversion::PoundsPerSquareInch => 1.450_4e-4,
+        }
+    }
 }
 
 #[operation]
@@ -868,12 +900,37 @@ enum SpeedConversion {
     MilesPerMinute = "Miles/Minute",
 }
 
+impl AffineUnit for SpeedConversion {
+    fn to_self_proportional(&self) -> f64 {
+        match self {
+            SpeedConversion::FeetPerMinute => 1.968_504e2,
+            SpeedConversion::FeetPerSecond => 3.280_8,
+            SpeedConversion::KilometersPerHour => 3.6,
+            SpeedConversion::KilometersPerMinute => 6e-2,
+            SpeedConversion::Knots => 1.943_8,
+            SpeedConversion::MetersPerSecond => 1.0,
+            SpeedConversion::MilesPerHour => 2.236_9,
+            SpeedConversion::MilesPerMinute => 3.728_227e-2,
+        }
+    }
+}
+
 #[operation]
 #[derive(Clone, Copy)]
 enum TemperatureConversion {
     Celsius = "Celsius",
     Fahrenheit = "Fahrenheit",
     Kelvin = "Kelvin",
+}
+
+impl AffineUnit for TemperatureConversion {
+    fn to_self(&self) -> (f64, f64) {
+        match self {
+            TemperatureConversion::Celsius => (1.0, -273.15),
+            TemperatureConversion::Fahrenheit => (1.8, -459.67),
+            TemperatureConversion::Kelvin => (1.0, 0.0),
+        }
+    }
 }
 
 #[operation]
@@ -885,6 +942,19 @@ enum TimeConversion {
     Days = "Days",
     Weeks = "Weeks",
     Years = "Years",
+}
+
+impl AffineUnit for TimeConversion {
+    fn to_self_proportional(&self) -> f64 {
+        match self {
+            TimeConversion::Seconds => 1.0,
+            TimeConversion::Minutes => 1.0 / 60.0,
+            TimeConversion::Hours => 1.0 / 60.0 / 60.0,
+            TimeConversion::Days => 1.0 / 60.0 / 60.0 / 24.0,
+            TimeConversion::Weeks => 1.0 / 60.0 / 60.0 / 24.0 / 7.0,
+            TimeConversion::Years => 1.0 / 60.0 / 60.0 / 24.0 / 365.0,
+        }
+    }
 }
 
 #[operation]
@@ -900,6 +970,21 @@ enum VolumeConversion {
     QuartsUs = "Quarts(US)",
 }
 
+impl AffineUnit for VolumeConversion {
+    fn to_self_proportional(&self) -> f64 {
+        match self {
+            VolumeConversion::CubicFeet => 35.3,
+            VolumeConversion::CubicMeters => 1.0,
+            VolumeConversion::FluidDramsUs => 2.705_121_82e5,
+            VolumeConversion::FluidOuncesUs => 3.381_402_27e4,
+            VolumeConversion::GallonsUs => 264.0,
+            VolumeConversion::Liters => 1e-3,
+            VolumeConversion::PintsUs => 1.816e3,
+            VolumeConversion::QuartsUs => 9.081e2,
+        }
+    }
+}
+
 #[operation]
 #[derive(Clone, Copy)]
 enum WeightsAndMassesConversion {
@@ -912,6 +997,22 @@ enum WeightsAndMassesConversion {
     ShortTonsUs = "Short-Tons(US)",
     Slugs = "Slugs",
     Tonnes = "Tonnes",
+}
+
+impl AffineUnit for WeightsAndMassesConversion {
+    fn to_self_proportional(&self) -> f64 {
+        match self {
+            WeightsAndMassesConversion::Drams => 564.3834,
+            WeightsAndMassesConversion::Grams => 1e3,
+            WeightsAndMassesConversion::Kilograms => 1.0,
+            WeightsAndMassesConversion::LongTons => 9.842_065e4,
+            WeightsAndMassesConversion::Ounces => 35.27396,
+            WeightsAndMassesConversion::PoundsUs => 2.204_623,
+            WeightsAndMassesConversion::ShortTonsUs => 1.102_311e3,
+            WeightsAndMassesConversion::Slugs => 6.85e2,
+            WeightsAndMassesConversion::Tonnes => 1e-3,
+        }
+    }
 }
 
 macro_rules! generate_conversions {
@@ -951,6 +1052,20 @@ macro_rules! generate_conversions {
                         }
                     )*
                 }
+            }
+        }
+
+        impl AffineUnit for ConversionOp {
+            fn to_self(&self) -> (f64, f64) {
+                let (from_coefficients, to_coefficients) = match self {
+                    $(
+                        ConversionOp::$field(from, to) => (from.to_self(), to.to_self()),
+                    )*
+                };
+
+                let (from_a, from_b) = from_coefficients;
+                let (to_a, to_b) = to_coefficients;
+                (to_a / from_a, to_b - to_a / from_a * from_b)
             }
         }
     };
@@ -1094,7 +1209,10 @@ impl ManipulatorOp {
                 if let Mode::Programmer = state.stack.mode() {
                     Err("Unit conversions not available in programmer mode".to_string())
                 } else {
-                    todo!()
+                    let (scale, offset) = op.to_self();
+                    let x = state.stack.peekf(0);
+                    *x = *x * scale + offset;
+                    Ok(())
                 }
             }
         }
