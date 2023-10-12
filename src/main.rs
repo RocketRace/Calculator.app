@@ -1267,11 +1267,19 @@ impl OutputOp {
 }
 
 #[operation]
+#[derive(Clone, Copy)]
+enum ClearOp {
+    C = "C",
+    AC = "AC",
+}
+
+#[operation]
 #[derive(Copy, Clone)]
 enum Op {
     NumericInput(NumericInputOp),
     Manipulator(ManipulatorOp),
     Output(OutputOp),
+    Clear(ClearOp),
 }
 
 impl Op {
@@ -1284,6 +1292,19 @@ impl Op {
             }
             Op::Output(op) => {
                 print!("{}", op.get_string(state)?);
+                Ok(())
+            }
+            Op::Clear(ClearOp::C) => {
+                state.input = InputState::Empty;
+                state.decimal_digits = 0;
+                *state.stack.peek(0) = 0;
+                Ok(())
+            }
+            Op::Clear(ClearOp::AC) => {
+                state.stack.raw = vec![0];
+                state.decimal_digits = 0;
+                state.memory = 0.0;
+                state.input = InputState::Empty;
                 Ok(())
             }
         }
