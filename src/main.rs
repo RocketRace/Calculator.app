@@ -1005,8 +1005,9 @@ impl AffineUnit for WeightsAndMassesConversion {
 }
 
 macro_rules! generate_conversions {
-    ($(#[$meta:meta])* enum $name:ident {
-        $($field:ident($from:ident, $to:ident)),*
+    ($(#[$meta:meta])*
+    enum $name:ident {
+        $($field:ident($from:ty, $to:ty)),*
         $(,)?
     }) => {
         $(#[$meta])*
@@ -1025,6 +1026,8 @@ macro_rules! generate_conversions {
                     ) {
                         return Ok(Self::$field(from, to));
                     })*
+                    _ = left;
+                    _ = right;
                     Err(())
                 } else {
                     Err(())

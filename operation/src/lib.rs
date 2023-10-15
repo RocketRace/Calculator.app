@@ -88,7 +88,7 @@ pub fn operation(args: TokenStream, input: TokenStream) -> TokenStream {
                 pat
             };
             quote! {
-                #parent::#name => (#choice).to_string()
+                #parent::#name => <str as ToString>::to_string(#choice)
             }
         })
         .collect();
