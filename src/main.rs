@@ -283,25 +283,10 @@ impl DigitOp {
 
 #[operation]
 #[derive(Copy, Clone)]
-enum ByteOp {
-    ZeroZero = "00",
-    FF = "ff",
-}
-
-impl ByteOp {
-    fn classify(self) -> u8 {
-        match self {
-            ByteOp::ZeroZero => 0,
-            ByteOp::FF => 15,
-        }
-    }
-}
-
-#[operation]
-#[derive(Copy, Clone)]
 enum NumericInputOp {
     Digit(DigitOp),
-    Byte(ByteOp),
+    ZeroZero = "00",
+    FF = "ff",
     DecimalPeriod = ".",
     DecimalComma = ",",
 }
@@ -328,13 +313,20 @@ impl NumericInputOp {
                 state.process_digit(digit)?;
                 state.handle_nans()
             }
-            NumericInputOp::Byte(op) => {
-                let digit = op.classify();
+            NumericInputOp::ZeroZero => {
+                if let Mode::Programmer = state.stack.mode() {
+                    state.process_digit(0)?;
+                    state.process_digit(0)
+                } else {
+                    Err("00 is not available outside programmer mode".to_string())
+                }
+            }
+            NumericInputOp::FF => {
                 let mode = state.stack.mode();
                 let base = state.base;
-                check_base(digit, Base::Hexadecimal, mode, base)?;
-                state.process_digit(digit)?;
-                state.process_digit(digit)
+                check_base(15, Base::Hexadecimal, mode, base)?;
+                state.process_digit(15)?;
+                state.process_digit(15)
             }
             NumericInputOp::DecimalComma | NumericInputOp::DecimalPeriod => {
                 match state.stack.mode() {
