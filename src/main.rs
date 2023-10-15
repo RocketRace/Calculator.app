@@ -376,9 +376,9 @@ impl ModeOp {
 #[operation]
 #[derive(Copy, Clone)]
 enum RpnOp {
-    Swap = "x<->y",
-    RotateDown = "Rv",
-    RotateUp = "R^",
+    Swap = "x↔︎y" | "x<->y",
+    RotateDown = "R↓" | "Rv",
+    RotateUp = "R↑" | "R^",
     Drop = "drop",
     Enter = "enter",
 }
@@ -457,7 +457,7 @@ impl BaseOp {
 #[operation]
 #[derive(Copy, Clone)]
 enum NumericUnaryOp {
-    Negate = "+/-",
+    Negate = "⁺∕₋" | "+/-",
     Percent = "%",
 }
 
@@ -475,7 +475,7 @@ impl NumericUnaryOp {
 enum ScientificConstOp {
     Rand = "Rand",
     E = "E",
-    Pi = "pi",
+    Pi = "π" | "pi",
 }
 
 impl ScientificConstOp {
@@ -509,9 +509,9 @@ impl TrigOp {
 #[operation]
 #[derive(Copy, Clone)]
 enum InverseTrigOp {
-    Arcsin = "sin^-1",
-    Arccos = "cos^-1",
-    Arctan = "tan^-1",
+    Arcsin = "sin⁻¹" | "sin^-1",
+    Arccos = "cos⁻¹" | "cos^-1",
+    Arctan = "tan⁻¹" | "tan^-1",
 }
 
 impl InverseTrigOp {
@@ -526,24 +526,24 @@ impl InverseTrigOp {
 #[operation]
 #[derive(Copy, Clone)]
 enum OtherScientificUnaryOp {
-    Exp10 = "10^x",
-    Log10 = "log10",
-    Exp = "e^x",
+    Exp10 = "10ˣ" | "10^x",
+    Log10 = "log⏨" | "log10",
+    Exp = "eˣ" | "e^x",
     Ln = "ln",
-    Exp2 = "2^x",
-    Log2 = "log2",
-    Square = "x^2",
-    Cube = "x^3",
-    Sqrt = "2Vx",
-    Cbrt = "3Vx",
-    Inverse = "1/x",
+    Exp2 = "2ˣ" | "2^x",
+    Log2 = "log₂" | "log2",
+    Square = "x²" | "x^2",
+    Cube = "x³" | "x^3",
+    Sqrt = "²√x" | "2Vx",
+    Cbrt = "³√x" | "3Vx",
+    Inverse = "¹∕ₓ" | "1/x",
     Factorial = "x!",
     Sinh = "sinh",
     Cosh = "cosh",
     Tanh = "tanh",
-    Arcsinh = "sinh^-1",
-    Arccosh = "cosh^-1",
-    Arctanh = "tanh^-1",
+    Arcsinh = "sinh⁻¹" | "sinh^-1",
+    Arccosh = "cosh⁻¹" | "cosh^-1",
+    Arctanh = "tanh⁻¹" | "tanh^-1",
 }
 
 impl OtherScientificUnaryOp {
@@ -639,8 +639,8 @@ impl ProgrammerUnaryOp {
 enum UniversalBinaryOp {
     Plus = "+",
     Minus = "-",
-    Times = "*",
-    Divide = "/",
+    Times = "×" | "*",
+    Divide = "÷" | "/",
 }
 
 impl UniversalBinaryOp {
@@ -667,10 +667,10 @@ impl UniversalBinaryOp {
 #[operation]
 #[derive(Copy, Clone)]
 enum ScientificBinaryOp {
-    XToY = "x^y",
-    YToX = "y^x",
-    LogYX = "logy",
-    YthRootX = "yVx",
+    XToY = "xʸ" | "x^y",
+    YToX = "yˣ" | "y^x",
+    LogYX = "logᵧ" | "logy",
+    YthRootX = "ʸ√x" | "yVx",
     EE = "EE",
 }
 

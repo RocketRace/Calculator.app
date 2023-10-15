@@ -5,7 +5,7 @@ extern crate syn;
 use proc_macro::TokenStream;
 use proc_macro2::Ident;
 use quote::quote;
-use syn::{parse_macro_input, Expr, Fields, ItemEnum, Type};
+use syn::{parse_macro_input, BinOp, Expr, ExprBinary, Fields, ItemEnum, Type};
 
 #[derive(Clone)]
 enum Variant {
@@ -76,8 +76,19 @@ pub fn operation(args: TokenStream, input: TokenStream) -> TokenStream {
         .into_iter()
         .flatten()
         .map(|(parent, name, pat)| {
+            // the first choice is the canonical form
+            let choice = if let Expr::Binary(ExprBinary {
+                left,
+                op: BinOp::BitOr(_),
+                ..
+            }) = &pat
+            {
+                *left.clone()
+            } else {
+                pat
+            };
             quote! {
-                #parent::#name => (#pat).to_string()
+                #parent::#name => (#choice).to_string()
             }
         })
         .collect();
