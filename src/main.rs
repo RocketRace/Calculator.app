@@ -288,8 +288,7 @@ enum NumericInputOp {
     Digit(DigitOp),
     ZeroZero = "00",
     FF = "ff",
-    DecimalPeriod = ".",
-    DecimalComma = ",",
+    Decimal = "." | ",",
 }
 
 fn check_base(digit: u8, min_base: Base, mode: Mode, base: Base) -> Result<(), String> {
@@ -329,7 +328,7 @@ impl NumericInputOp {
                 state.process_digit(15)?;
                 state.process_digit(15)
             }
-            NumericInputOp::DecimalComma | NumericInputOp::DecimalPeriod => {
+            NumericInputOp::Decimal => {
                 match state.stack.mode() {
                     Mode::Basic | Mode::Scientific => match state.input {
                         InputState::Done | InputState::Empty => {
