@@ -9,6 +9,7 @@ use std::{
 
 use operation::operation;
 use spfunc::gamma::gamma;
+use unicode_width::UnicodeWidthStr;
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum Angle {
@@ -1334,11 +1335,8 @@ fn exec(program: &str) -> Result<(), String> {
             let col_start_bytes = unsafe { line.as_ptr().offset_from(program.as_ptr()) } as usize;
             let col_offset_bytes = byte_offset - col_start_bytes;
 
-            // this should be extracted to a function
-            let visual_width = |s: &str| -> usize {s.chars().map(|c| if "\u{fe0e}".contains(c) {0} else {1}).sum()};
-
-            let col_offset_chars = visual_width(&line[..col_offset_bytes]);
-            let col_offset_len_chars = col_offset_chars + visual_width(word);
+            let col_offset_chars = UnicodeWidthStr::width(&line[..col_offset_bytes]);
+            let col_offset_len_chars = col_offset_chars + UnicodeWidthStr::width(word);
             dbg!(line, col_start_bytes, col_offset_bytes, col_offset_chars, col_offset_len_chars);
 
             let pos = format!("{line_number}:{col_offset_chars}");
