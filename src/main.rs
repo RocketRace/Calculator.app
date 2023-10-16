@@ -1303,7 +1303,7 @@ impl Op {
     }
 }
 
-fn main() {
+fn exec(program: &str) -> Result<(), String> {
     let mut state = State {
         stack: NewStack {
             mode: Mode::Basic,
@@ -1316,36 +1316,37 @@ fn main() {
         base: Base::Hexadecimal,
     };
 
-    let mut program = String::new();
-    if let Err(e) = stdin().read_to_string(&mut program) {
-        panic!("Error reading program: {e}\n")
-    }
-
-    for word in program.split_ascii_whitespace() {
+    program.split_ascii_whitespace().try_for_each(|word| {
         if let Err(e) = Op::from_str(word)
             .map_err(|_| format!("Unknown word {word}"))
             .and_then(|op| op.act(&mut state))
         {
             // `word` is always a valid slice within `program` so safety invariants are held
-            let offset = unsafe { word.as_ptr().offset_from(program.as_ptr()) } as usize;
+            let byte_offset = unsafe { word.as_ptr().offset_from(program.as_ptr()) } as usize;
             let line_number = program
                 .as_bytes()
                 .iter()
-                .take(offset)
+                .take(byte_offset)
                 .filter(|&&c| c == b'\n')
                 .count()
                 + 1;
             let line = program.lines().nth(line_number - 1).unwrap();
-            let col_start = unsafe { line.as_ptr().offset_from(program.as_ptr()) } as usize;
-            let col_offset = offset - col_start;
-            let col_offset_len = col_offset + word.len();
+            let col_start_bytes = unsafe { line.as_ptr().offset_from(program.as_ptr()) } as usize;
+            let col_offset_bytes = byte_offset - col_start_bytes;
 
-            let pos = format!("{line_number}:{col_offset}");
+            // this should be extracted to a function
+            let visual_width = |s: &str| -> usize {s.chars().map(|c| if "\u{fe0e}".contains(c) {0} else {1}).sum()};
+
+            let col_offset_chars = visual_width(&line[..col_offset_bytes]);
+            let col_offset_len_chars = col_offset_chars + visual_width(word);
+            dbg!(line, col_start_bytes, col_offset_bytes, col_offset_chars, col_offset_len_chars);
+
+            let pos = format!("{line_number}:{col_offset_chars}");
             let fake_pos: String = (0..pos.len()).map(|_| ' ').collect();
 
             let pointer_line: String = (0..line.len())
                 .map(|i| {
-                    if col_offset <= i && i < col_offset_len {
+                    if col_offset_chars <= i && i < col_offset_len_chars {
                         '^'
                     } else {
                         ' '
@@ -1353,11 +1354,21 @@ fn main() {
                 })
                 .collect();
 
-            eprintln!("In state: {state:?}");
-            eprintln!("{pos} | {line}");
-            eprintln!("{fake_pos} | {pointer_line}");
-            eprintln!("{fake_pos} | Error: {e}");
-            exit(1);
+            Err(format!("In state: {state:?}\n{pos} | {line}\n{fake_pos} | {pointer_line}\n{fake_pos} | Error: {e}"))
+        } else {
+            Ok(())
         }
+    })
+}
+
+fn main() {
+    let mut program = String::new();
+    if let Err(e) = stdin().read_to_string(&mut program) {
+        panic!("Error reading program: {e}\n")
+    }
+
+    if let Err(trace) = exec(&program) {
+        eprintln!("{trace}");
+        exit(1)
     }
 }
