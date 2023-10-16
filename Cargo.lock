@@ -12,17 +12,7 @@ checksum = "7f30e7476521f6f8af1a1c4c0b8cc94f0bee37d91763d0ca2665f299b6cd8aec"
 name = "calculator-app"
 version = "0.1.0"
 dependencies = [
- "calculator-app-interpreter",
-]
-
-[[package]]
-name = "calculator-app-interpreter"
-version = "0.1.0"
-dependencies = [
- "getrandom",
- "operation",
- "rand",
- "unicode-width",
+ "interpreter",
 ]
 
 [[package]]
@@ -42,6 +32,16 @@ dependencies = [
  "libc",
  "wasi",
  "wasm-bindgen",
+]
+
+[[package]]
+name = "interpreter"
+version = "0.1.0"
+dependencies = [
+ "getrandom",
+ "operation",
+ "rand",
+ "unicode-width",
 ]
 
 [[package]]

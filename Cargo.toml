@@ -1,5 +1,5 @@
 [workspace]
-members = ["calculator-app-interpreter"]
+members = ["interpreter"]
 
 [package]
 name = "calculator-app"
@@ -9,4 +9,4 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-calculator-app-interpreter = { path = "calculator-app-interpreter" }
+interpreter = { path = "interpreter" }

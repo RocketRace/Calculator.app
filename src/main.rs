@@ -9,7 +9,7 @@ fn main() {
         panic!("Error reading program: {e}\n")
     }
 
-    if let Err(message) = calculator_app_interpreter::exec(&program) {
+    if let Err(message) = interpreter::exec(&program) {
         eprintln!("{message}");
         exit(1)
     }
