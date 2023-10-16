@@ -1337,7 +1337,6 @@ fn exec(program: &str) -> Result<(), String> {
 
             let col_offset_chars = UnicodeWidthStr::width(&line[..col_offset_bytes]);
             let col_offset_len_chars = col_offset_chars + UnicodeWidthStr::width(word);
-            dbg!(line, col_start_bytes, col_offset_bytes, col_offset_chars, col_offset_len_chars);
 
             let pos = format!("{line_number}:{col_offset_chars}");
             let fake_pos: String = (0..pos.len()).map(|_| ' ').collect();
