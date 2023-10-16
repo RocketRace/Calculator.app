@@ -6,9 +6,80 @@ use std::{
 };
 
 use operation::operation;
-use rand::random;
-use spfunc::gamma::gamma;
+// use rand::random;
+fn random() -> f64 {
+    0.0
+}
 use unicode_width::UnicodeWidthStr;
+
+/// Gamma function adapted from statrs 0.16.0: https://docs.rs/statrs/latest/statrs/index.html
+///
+/// MIT License
+///
+/// Copyright (c) 2016 Michael Ma
+///
+/// Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+/// associated documentation files (the "Software"), to deal in the Software without restriction,
+/// including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense,
+/// and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so,
+/// subject to the following conditions:
+///
+/// The above copyright notice and this permission notice shall be included in all copies or substantial
+/// portions of the Software.
+///
+/// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT
+/// LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+/// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY,
+/// WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+/// SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+mod gamma_fn {
+    use std::f64::consts::{E, PI};
+
+    /// Constant value for `2 * sqrt(e / pi)`
+    const TWO_SQRT_E_OVER_PI: f64 = 1.860_382_734_205_265_7;
+
+    /// Auxiliary variable when evaluating the `gamma_ln` function
+    const GAMMA_R: f64 = 10.900511;
+
+    /// Polynomial coefficients for approximating the `gamma_ln` function
+    const GAMMA_DK: &[f64] = &[
+        2.485_740_891_387_535_5e-5,
+        1.051_423_785_817_219_7,
+        -3.456_870_972_220_162_5,
+        4.512_277_094_668_948,
+        -2.982_852_253_235_766_4,
+        1.056_397_115_771_267,
+        -1.954_287_731_916_458_7e-1,
+        1.709_705_434_044_412e-2,
+        -5.719_261_174_043_057e-4,
+        4.633_994_733_599_057e-6,
+        -2.719_949_084_886_077_2e-9,
+    ];
+
+    /// Computes the gamma function with an accuracy
+    /// of 16 floating point digits. The implementation
+    /// is derived from "An Analysis of the Lanczos Gamma Approximation",
+    /// Glendon Ralph Pugh, 2004 p. 116
+    pub fn gamma(x: f64) -> f64 {
+        if x < 0.5 {
+            let s = GAMMA_DK
+                .iter()
+                .enumerate()
+                .skip(1)
+                .fold(GAMMA_DK[0], |s, t| s + t.1 / (t.0 as f64 - x));
+
+            PI / ((PI * x).sin() * s * TWO_SQRT_E_OVER_PI * ((0.5 - x + GAMMA_R) / E).powf(0.5 - x))
+        } else {
+            let s = GAMMA_DK
+                .iter()
+                .enumerate()
+                .skip(1)
+                .fold(GAMMA_DK[0], |s, t| s + t.1 / (x + t.0 as f64 - 1.0));
+
+            s * TWO_SQRT_E_OVER_PI * ((x - 0.5 + GAMMA_R) / E).powf(x - 0.5)
+        }
+    }
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum Angle {
@@ -559,7 +630,7 @@ impl OtherScientificUnaryOp {
             OtherScientificUnaryOp::Sqrt => x.sqrt(),
             OtherScientificUnaryOp::Cbrt => x.cbrt(),
             OtherScientificUnaryOp::Inverse => 1.0 / x,
-            OtherScientificUnaryOp::Factorial => gamma(x + 1.0),
+            OtherScientificUnaryOp::Factorial => gamma_fn::gamma(x + 1.0),
             OtherScientificUnaryOp::Sinh => x.sinh(),
             OtherScientificUnaryOp::Cosh => x.cosh(),
             OtherScientificUnaryOp::Tanh => x.tanh(),
