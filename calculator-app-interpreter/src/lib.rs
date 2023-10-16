@@ -104,7 +104,7 @@ impl Base {
     }
 }
 
-struct Stack {
+pub struct Stack {
     mode: Mode,
     raw: Vec<u64>,
 }
@@ -127,10 +127,13 @@ impl Debug for Stack {
 }
 
 impl Stack {
-    fn mode(&self) -> Mode {
+    pub fn mode(&self) -> Mode {
         self.mode
     }
-    fn set_mode(&mut self, mode: Mode, cast: Cast) {
+    pub fn raw(&self) -> &[u64] {
+        &self.raw
+    }
+    pub fn set_mode(&mut self, mode: Mode, cast: Cast) {
         match (self.mode, mode) {
             (Mode::Basic | Mode::Scientific, Mode::Programmer) => {
                 if let Cast::Numeric = cast {
@@ -234,7 +237,7 @@ impl Stack {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
-enum Cast {
+pub enum Cast {
     Numeric,
     Bitwise,
 }
@@ -248,7 +251,7 @@ enum InputState {
 }
 
 #[derive(Clone, Copy, Debug)]
-enum Mode {
+pub enum Mode {
     Basic,
     Scientific,
     Programmer,
@@ -257,7 +260,7 @@ enum Mode {
 #[derive(Debug)]
 pub struct State {
     decimal_digits: usize,
-    stack: Stack,
+    pub stack: Stack,
     input: InputState,
     angle: Angle,
     memory: f64,
