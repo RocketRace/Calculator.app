@@ -6,6 +6,7 @@ use std::{
 };
 
 use operation::operation;
+use rand::random;
 use spfunc::gamma::gamma;
 use unicode_width::UnicodeWidthStr;
 
@@ -479,7 +480,7 @@ enum ScientificConstOp {
 impl ScientificConstOp {
     fn eval(self) -> f64 {
         match self {
-            ScientificConstOp::Rand => rand::random(),
+            ScientificConstOp::Rand => random(),
             ScientificConstOp::E => E,
             ScientificConstOp::Pi => PI,
         }

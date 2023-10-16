@@ -1,6 +1,6 @@
 
 [package]
-name = "interpreter"
+name = "calculator-app-interpreter"
 version = "0.1.0"
 edition = "2021"
 
@@ -9,5 +9,5 @@ edition = "2021"
 [dependencies]
 rand = "0.8.5"
 spfunc = "0.1.0"
-operation = { path = "operation" }
 unicode-width = "0.1.11"
+operation = { path = "operation" }
