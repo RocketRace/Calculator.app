@@ -104,12 +104,12 @@ impl Base {
     }
 }
 
-struct NewStack {
+struct Stack {
     mode: Mode,
     raw: Vec<u64>,
 }
 
-impl Debug for NewStack {
+impl Debug for Stack {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         if let Mode::Programmer = self.mode {
             f.debug_struct("NewStack")
@@ -126,7 +126,7 @@ impl Debug for NewStack {
     }
 }
 
-impl NewStack {
+impl Stack {
     fn mode(&self) -> Mode {
         self.mode
     }
@@ -255,9 +255,9 @@ enum Mode {
 }
 
 #[derive(Debug)]
-struct State {
+pub struct State {
     decimal_digits: usize,
-    stack: NewStack,
+    stack: Stack,
     input: InputState,
     angle: Angle,
     memory: f64,
@@ -454,7 +454,7 @@ enum RpnOp {
 }
 
 impl RpnOp {
-    fn act(self, stack: &mut NewStack) {
+    fn act(self, stack: &mut Stack) {
         match self {
             RpnOp::Swap => stack.swap(),
             RpnOp::RotateDown => stack.raw.rotate_right(1),
@@ -480,7 +480,7 @@ enum MemoryOp {
 }
 
 impl MemoryOp {
-    fn act(self, stack: &mut NewStack, mem: &mut f64) {
+    fn act(self, stack: &mut Stack, mem: &mut f64) {
         match self {
             MemoryOp::Recall => *stack.peekf(0) = *mem,
             MemoryOp::Add => *mem += *stack.peekf(0),
@@ -1367,9 +1367,9 @@ impl Op {
     }
 }
 
-pub fn exec(program: &str) -> Result<(), String> {
+pub fn exec(program: &str) -> Result<State, String> {
     let mut state = State {
-        stack: NewStack {
+        stack: Stack {
             mode: Mode::Basic,
             raw: vec![0],
         },
@@ -1381,10 +1381,11 @@ pub fn exec(program: &str) -> Result<(), String> {
     };
 
     program.split_ascii_whitespace().try_for_each(|word| {
-        if let Err(e) = Op::from_str(word)
+        Op::from_str(word)
             .map_err(|_| format!("Unknown word {word}"))
             .and_then(|op| op.act(&mut state))
-        {
+            .map_err(|e| {
+
             // `word` is always a valid slice within `program` so safety invariants are held
             let byte_offset = unsafe { word.as_ptr().offset_from(program.as_ptr()) } as usize;
             let line_number = program
@@ -1414,9 +1415,8 @@ pub fn exec(program: &str) -> Result<(), String> {
                 })
                 .collect();
 
-            Err(format!("In state: {state:?}\n{pos} | {line}\n{fake_pos} | {pointer_line}\n{fake_pos} | Error: {e}"))
-        } else {
-            Ok(())
-        }
-    })
+            format!("In state: {state:?}\n{pos} | {line}\n{fake_pos} | {pointer_line}\n{fake_pos} | Error: {e}")
+        })
+    })?;
+    Ok(state)
 }
