@@ -6,10 +6,7 @@ use std::{
 };
 
 use operation::operation;
-// use rand::random;
-fn random() -> f64 {
-    0.0
-}
+use rand::random;
 use unicode_width::UnicodeWidthStr;
 
 /// Gamma function adapted from statrs 0.16.0: https://docs.rs/statrs/latest/statrs/index.html
