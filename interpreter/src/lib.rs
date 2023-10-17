@@ -254,12 +254,19 @@ pub enum Mode {
     Programmer,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Palette {
+    First,
+    Second,
+}
+
 #[derive(Debug)]
 pub struct State {
     decimal_digits: usize,
     pub stack: Stack,
     input: InputState,
     angle: Angle,
+    palette: Palette,
     memory: f64,
     base: Base,
 }
@@ -617,6 +624,19 @@ enum OtherScientificUnaryOp {
 }
 
 impl OtherScientificUnaryOp {
+    fn palette(self) -> Palette {
+        if matches!(
+            self,
+            OtherScientificUnaryOp::Exp10
+                | OtherScientificUnaryOp::Log10
+                | OtherScientificUnaryOp::Exp
+                | OtherScientificUnaryOp::Ln
+        ) {
+            Palette::First
+        } else {
+            Palette::Second
+        }
+    }
     fn eval(self, x: f64) -> f64 {
         match self {
             OtherScientificUnaryOp::Exp10 => 10.0f64.powf(x),
@@ -650,6 +670,13 @@ enum ScientificUnaryOp {
 }
 
 impl ScientificUnaryOp {
+    fn palette(self) -> Palette {
+        match self {
+            ScientificUnaryOp::Trig(_) => Palette::First,
+            ScientificUnaryOp::InverseTrig(_) => Palette::Second,
+            ScientificUnaryOp::Other(op) => op.palette(),
+        }
+    }
     fn eval(&self, x: f64, angle: Angle) -> f64 {
         match self {
             ScientificUnaryOp::Trig(trig) => {
@@ -745,6 +772,13 @@ enum ScientificBinaryOp {
 }
 
 impl ScientificBinaryOp {
+    fn palette(self) -> Palette {
+        if matches!(self, ScientificBinaryOp::YToX | ScientificBinaryOp::LogYX) {
+            Palette::First
+        } else {
+            Palette::Second
+        }
+    }
     fn eval(self, x: f64, y: f64) -> f64 {
         match self {
             ScientificBinaryOp::XToY => {
@@ -1156,13 +1190,14 @@ enum ManipulatorOp {
     Rpn(RpnOp),
     Memory(MemoryOp),
     Angle(AngleOp),
+    SecondPalette = "2ⁿᵈ" | "2nd",
     Base(BaseOp),
-    ScientificConst(ScientificConstOp),
-    BasicUnary(NumericUnaryOp),
-    ScientificUnary(ScientificUnaryOp),
-    ProgrammerUnary(ProgrammerUnaryOp),
     UniversalBinary(UniversalBinaryOp),
+    BasicUnary(NumericUnaryOp),
+    ScientificConst(ScientificConstOp),
+    ScientificUnary(ScientificUnaryOp),
     ScientificBinary(ScientificBinaryOp),
+    ProgrammerUnary(ProgrammerUnaryOp),
     ProgrammerBinary(ProgrammerBinaryOp),
     Conversion(ConversionOp),
 }
@@ -1199,6 +1234,17 @@ impl ManipulatorOp {
                     Err("Angle can't be set to what it already is".to_string())
                 }
             }
+            ManipulatorOp::SecondPalette => {
+                if let Mode::Scientific = state.stack.mode() {
+                    match state.palette {
+                        Palette::First => state.palette = Palette::Second,
+                        Palette::Second => state.palette = Palette::First,
+                    }
+                    Ok(())
+                } else {
+                    Err("2nd op is only valid in scientific mode".to_string())
+                }
+            }
             ManipulatorOp::Base(op) => {
                 if let Mode::Programmer = state.stack.mode() {
                     state.base = op.base();
@@ -1226,9 +1272,13 @@ impl ManipulatorOp {
             }
             ManipulatorOp::ScientificUnary(op) => {
                 if let Mode::Scientific = state.stack.mode() {
-                    state.stack.unary_float(|x| op.eval(x, state.angle));
-                    state.handle_nans()?;
-                    Ok(())
+                    if state.palette == op.palette() {
+                        state.stack.unary_float(|x| op.eval(x, state.angle));
+                        state.handle_nans()?;
+                        Ok(())
+                    } else {
+                        Err("this op is not available in the current palette".to_string())
+                    }
                 } else {
                     Err("Scientific unary not available in current mode".to_string())
                 }
@@ -1252,8 +1302,12 @@ impl ManipulatorOp {
             }
             ManipulatorOp::ScientificBinary(op) => {
                 if let Mode::Scientific = state.stack.mode() {
-                    state.stack.binary_float(|x, y| op.eval(x, y))?;
-                    state.handle_nans()
+                    if state.palette == op.palette() {
+                        state.stack.binary_float(|x, y| op.eval(x, y))?;
+                        state.handle_nans()
+                    } else {
+                        Err("this op is not available in the current palette".to_string())
+                    }
                 } else {
                     Err("Scientific binny not available in current mode".to_string())
                 }
@@ -1376,6 +1430,7 @@ pub fn exec(program: &str) -> Result<State, String> {
         input: InputState::Empty,
         decimal_digits: 0,
         angle: Angle::Degrees,
+        palette: Palette::First,
         memory: 0.0,
         base: Base::Hexadecimal,
     };
