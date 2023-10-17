@@ -25,7 +25,7 @@ fn main() {
             .map_err(|e| format!("Failed to read file contents from standard input\n{e}"))
     };
     if let Err(e) = result.and_then(|program| interpreter::exec(&program)) {
-        eprint!("{e}");
+        eprintln!("{e}");
         exit(1)
     };
 }
