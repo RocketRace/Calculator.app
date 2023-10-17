@@ -3,14 +3,29 @@ use std::{
     process::exit,
 };
 
-fn main() {
-    let mut program = String::new();
-    if let Err(e) = stdin().read_to_string(&mut program) {
-        panic!("Error reading program: {e}\n")
-    }
+use clap::Parser;
 
-    if let Err(message) = interpreter::exec(&program) {
-        eprintln!("{message}");
+#[derive(Parser)]
+struct Args {
+    /// Input file to read program from. Defaults to standard input.
+    input: Option<String>,
+}
+
+fn main() {
+    let args = Args::parse();
+
+    let result = if let Some(filename) = args.input {
+        std::fs::read_to_string(&filename)
+            .map_err(|e| format!("Failed to read file contents from {filename}\n{e}"))
+    } else {
+        let mut program = String::new();
+        stdin()
+            .read_to_string(&mut program)
+            .map(|_| program)
+            .map_err(|e| format!("Failed to read file contents from standard input\n{e}"))
+    };
+    if let Err(e) = result.and_then(|program| interpreter::exec(&program)) {
+        eprint!("{e}");
         exit(1)
-    }
+    };
 }
