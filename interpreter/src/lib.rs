@@ -1,6 +1,6 @@
 use std::{
     f64::consts::{E, PI},
-    fmt::{self, format, Debug, Display},
+    fmt::{self, Debug, Display},
     mem::transmute,
     str::FromStr,
 };
