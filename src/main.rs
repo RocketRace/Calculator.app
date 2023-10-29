@@ -15,8 +15,7 @@ fn main() {
     let args = Args::parse();
 
     let result = if let Some(filename) = args.input {
-        std::fs::read_to_string(&filename)
-            .map_err(|e| format!("Failed to read file contents from {filename}\n{e}"))
+        std::fs::read_to_string(&filename).map_err(|e| format!("Failed to read file contents from {filename}\n{e}"))
     } else {
         let mut program = String::new();
         stdin()

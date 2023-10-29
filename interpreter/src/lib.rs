@@ -1,6 +1,6 @@
 use std::{
     f64::consts::{E, PI},
-    fmt::{self, Debug},
+    fmt::{self, format, Debug, Display},
     mem::transmute,
     str::FromStr,
 };
@@ -81,7 +81,7 @@ mod gamma_fn {
 enum Error {
     NotEnoughStack { expected: usize, got: usize },
     InvalidResult { nan: bool },
-    BadDigitBase { expected: Base, got: Base },
+    BadDigitBase { expected: Base },
     BadMode { required: Mode },
     BadModeEither { either: Mode, or: Mode },
     DuplicateDecimalPoint,
@@ -115,6 +115,15 @@ impl Base {
             Base::Decimal => 10,
             Base::Hexadecimal => 16,
         }
+    }
+}
+impl Display for Base {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Base::Octal => "octal",
+            Base::Decimal => "decimal",
+            Base::Hexadecimal => "hexadecimal",
+        })
     }
 }
 
@@ -276,11 +285,28 @@ pub enum Mode {
     Scientific,
     Programmer,
 }
+impl Display for Mode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Mode::Basic => "basic",
+            Mode::Scientific => "scientific",
+            Mode::Programmer => "programmer",
+        })
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Palette {
     First,
     Second,
+}
+impl Display for Palette {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Palette::First => "first (default)",
+            Palette::Second => "second (2nd)",
+        })
+    }
 }
 
 #[derive(Debug)]
@@ -396,14 +422,10 @@ fn check_base(min_base: Base, mode: Mode, base: Base) -> Result<(), Error> {
         if let Base::Hexadecimal = min_base {
             return Err(Error::BadDigitBase {
                 expected: Base::Hexadecimal,
-                got: Base::Decimal,
             });
         }
     } else if base < min_base {
-        return Err(Error::BadDigitBase {
-            expected: min_base,
-            got: base,
-        });
+        return Err(Error::BadDigitBase { expected: min_base });
     }
     Ok(())
 }
@@ -1500,18 +1522,50 @@ pub fn exec(program: &str) -> Result<State, String> {
             .and_then(|op| op.act(&mut state))
             .map_err(|e| {
                 let msg = match e {
-                    Error::NotEnoughStack { expected, got } => format!("Not enough values on the stack - expected {expected}, got {got}"),
-                    Error::InvalidResult { nan } => todo!(),
-                    Error::BadDigitBase { expected, got } => todo!(),
-                    Error::BadMode { required } => todo!(),
-                    Error::BadModeEither { either, or } => todo!(),
-                    Error::DuplicateDecimalPoint => todo!(),
-                    Error::InvalidDecimalPoint => todo!(),
-                    Error::InvalidMemory { nan } => todo!(),
-                    Error::BadAngleOnlyToggle => todo!(),
-                    Error::BadPalette { required } => todo!(),
-                    Error::BadCodepoint => todo!(),
-                    Error::UnknownWord => todo!(),
+                    Error::NotEnoughStack { expected, got } => {
+                        format!("Not enough values on the stack - expected {expected}, got {got}")
+                    }
+                    Error::InvalidResult { nan } => {
+                        if nan {
+                            "The operation returned a NaN value".to_string()
+                        } else {
+                            "The operation returned an infinite value".to_string()
+                        }
+                    }
+                    Error::BadDigitBase { expected } => {
+                        format!("This digit can only be used when the base is set to {expected}")
+                    }
+                    Error::BadMode { required } => {
+                        format!("This operation is only available in {required} mode")
+                    }
+                    Error::BadModeEither { either, or } => {
+                        format!(
+                            "This operation is only available in either {either} mode or {or} mode"
+                        )
+                    }
+                    Error::DuplicateDecimalPoint => {
+                        "The number already has a decimal point".to_string()
+                    }
+                    Error::InvalidDecimalPoint => {
+                        "Decimal points can only be used for floating point numbers".to_string()
+                    }
+                    Error::InvalidMemory { nan } => {
+                        if nan {
+                            "The memory cell contains a NaN value".to_string()
+                        } else {
+                            "The memory cell contains an infinite value".to_string()
+                        }
+                    }
+                    Error::BadAngleOnlyToggle => {
+                        "The angle cannot be set to what it already is".to_string()
+                    }
+                    Error::BadPalette { required } => {
+                        format!("This operation is only available with the {required} palette")
+                    }
+                    Error::BadCodepoint => {
+                        "The input integer is not a valid Unicode codepoint".to_string()
+                    }
+                    Error::UnknownWord => "Unknown word".to_string(),
                 };
                 // `word` is always a valid slice within `program` so safety invariants are held
                 let byte_offset = unsafe { word.as_ptr().offset_from(program.as_ptr()) } as usize;
@@ -1523,18 +1577,19 @@ pub fn exec(program: &str) -> Result<State, String> {
                     .count()
                     + 1;
                 let line = program.lines().nth(line_number - 1).unwrap();
-                let col_start_bytes = unsafe { line.as_ptr().offset_from(program.as_ptr()) } as usize;
-                let col_offset_bytes = byte_offset - col_start_bytes;
+                let col_offset_chars =
+                    unsafe { line.as_ptr().offset_from(program.as_ptr()) } as usize;
+                let col_offset_bytes = byte_offset - col_offset_chars;
 
-                let col_offset_chars = UnicodeWidthStr::width(&line[..col_offset_bytes]);
-                let col_offset_len_chars = col_offset_chars + UnicodeWidthStr::width(word);
+                let col_chars = UnicodeWidthStr::width(&line[..col_offset_bytes]);
+                let col_len_chars = col_chars + UnicodeWidthStr::width(word);
 
                 let pos = format!("{line_number}:{col_offset_chars}");
                 let fake_pos: String = (0..pos.len()).map(|_| ' ').collect();
 
                 let pointer_line: String = (0..line.len())
                     .map(|i| {
-                        if col_offset_chars <= i && i < col_offset_len_chars {
+                        if col_chars <= i && i < col_len_chars {
                             '^'
                         } else {
                             ' '
@@ -1542,9 +1597,14 @@ pub fn exec(program: &str) -> Result<State, String> {
                     })
                     .collect();
 
-                format!("In state: {state:?}\n{pos} | {line}\n{fake_pos} | {pointer_line}\n{fake_pos} | Error: {msg}")
-            }
-        )
+                [
+                    format!("In state: {state:?}\n{pos}"),
+                    format!("{pos} | {line}\n{fake_pos}"),
+                    format!("{fake_pos} | {pointer_line}\n{fake_pos}"),
+                    format!("{fake_pos} | Error: {msg}"),
+                ]
+                .join("\n")
+            })
     })?;
     Ok(state)
 }

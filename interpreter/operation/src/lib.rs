@@ -78,9 +78,7 @@ pub fn operation(args: TokenStream, input: TokenStream) -> TokenStream {
         .map(|(parent, name, pat)| {
             // the first choice is the canonical form
             let choice = if let Expr::Binary(ExprBinary {
-                left,
-                op: BinOp::BitOr(_),
-                ..
+                left, op: BinOp::BitOr(_), ..
             }) = &pat
             {
                 *left.clone()
