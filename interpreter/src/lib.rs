@@ -1,6 +1,6 @@
 use std::{
     f64::consts::{E, PI},
-    fmt::Debug,
+    fmt::{self, Debug},
     mem::transmute,
     str::FromStr,
 };
@@ -78,6 +78,23 @@ mod gamma_fn {
     }
 }
 
+enum Error {
+    NotEnoughStack { expected: usize, got: usize },
+    InvalidResult { nan: bool },
+    BadDigitBase { expected: Base, got: Base },
+    BadMode { required: Mode },
+    BadModeEither { either: Mode, or: Mode },
+    DuplicateDecimalPoint,
+    InvalidDecimalPoint,
+    InvalidMemory { nan: bool },
+    BadAngleOnlyToggle,
+    BadPalette { required: Palette },
+    BadCodepoint,
+    UnknownWord,
+}
+
+impl Error {}
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum Angle {
     Degrees,
@@ -107,7 +124,7 @@ pub struct Stack {
 }
 
 impl Debug for Stack {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Mode::Programmer = self.mode {
             f.debug_struct("NewStack")
                 .field("mode", &self.mode)
@@ -210,25 +227,31 @@ impl Stack {
         self.setf(func(x))
     }
 
-    fn binary_int(&mut self, func: impl Fn(u64, u64) -> u64) -> Result<(), String> {
+    fn binary_int(&mut self, func: impl Fn(u64, u64) -> u64) -> Result<(), Error> {
         if self.len() >= 2 {
             let y = self.pop();
             let x = *self.peek(0);
             self.set(func(x, y));
             Ok(())
         } else {
-            Err("Not enough values on the stack".to_string())
+            Err(Error::NotEnoughStack {
+                expected: 2,
+                got: self.len(),
+            })
         }
     }
 
-    fn binary_float(&mut self, func: impl Fn(f64, f64) -> f64) -> Result<(), String> {
+    fn binary_float(&mut self, func: impl Fn(f64, f64) -> f64) -> Result<(), Error> {
         if self.len() >= 2 {
             let y = self.popf();
             let x = *self.peekf(0);
             self.setf(func(x, y));
             Ok(())
         } else {
-            Err("Not enough values on the stack".to_string())
+            Err(Error::NotEnoughStack {
+                expected: 2,
+                got: self.len(),
+            })
         }
     }
 }
@@ -272,17 +295,17 @@ pub struct State {
 }
 
 impl State {
-    fn handle_nans(&mut self) -> Result<(), String> {
+    fn handle_nans(&mut self) -> Result<(), Error> {
         let top = *self.stack.peekf(0);
         if top.is_nan() {
-            Err("Operation produced NaN result".to_string())
+            Err(Error::InvalidResult { nan: true })
         } else if top.is_infinite() {
-            Err("Operation produced infinite result".to_string())
+            Err(Error::InvalidResult { nan: false })
         } else {
             Ok(())
         }
     }
-    fn process_digit(&mut self, digit: u8) -> Result<(), String> {
+    fn process_digit(&mut self, digit: u8) -> Result<(), Error> {
         match self.input {
             InputState::Empty | InputState::Done => {
                 self.input = InputState::Integral;
@@ -368,25 +391,31 @@ enum NumericInputOp {
     Decimal = "." | ",",
 }
 
-fn check_base(digit: u8, min_base: Base, mode: Mode, base: Base) -> Result<(), String> {
+fn check_base(min_base: Base, mode: Mode, base: Base) -> Result<(), Error> {
     if let Mode::Basic | Mode::Scientific = mode {
         if let Base::Hexadecimal = min_base {
-            return Err("Can't do hex input outside of programmer mode".to_string());
+            return Err(Error::BadDigitBase {
+                expected: Base::Hexadecimal,
+                got: Base::Decimal,
+            });
         }
     } else if base < min_base {
-        return Err(format!("Base setting sucks for the given digit '{digit}'"));
+        return Err(Error::BadDigitBase {
+            expected: min_base,
+            got: base,
+        });
     }
     Ok(())
 }
 
 impl NumericInputOp {
-    fn process_digit(self, state: &mut State) -> Result<(), String> {
+    fn process_digit(self, state: &mut State) -> Result<(), Error> {
         match self {
             NumericInputOp::Digit(op) => {
                 let (digit, min_base) = op.classify();
                 let mode = state.stack.mode();
                 let base = state.base;
-                check_base(digit, min_base, mode, base)?;
+                check_base(min_base, mode, base)?;
                 state.process_digit(digit)?;
                 state.handle_nans()
             }
@@ -395,13 +424,15 @@ impl NumericInputOp {
                     state.process_digit(0)?;
                     state.process_digit(0)
                 } else {
-                    Err("00 is not available outside programmer mode".to_string())
+                    Err(Error::BadMode {
+                        required: Mode::Programmer,
+                    })
                 }
             }
             NumericInputOp::FF => {
                 let mode = state.stack.mode();
                 let base = state.base;
-                check_base(15, Base::Hexadecimal, mode, base)?;
+                check_base(Base::Hexadecimal, mode, base)?;
                 state.process_digit(15)?;
                 state.process_digit(15)
             }
@@ -416,13 +447,9 @@ impl NumericInputOp {
                             state.input = InputState::Decimal;
                             state.decimal_digits = 0
                         }
-                        InputState::Decimal => {
-                            return Err("Already have a decimal point".to_string())
-                        }
+                        InputState::Decimal => return Err(Error::DuplicateDecimalPoint),
                     },
-                    Mode::Programmer => {
-                        return Err("Decimals invalid in programmer mode".to_string())
-                    }
+                    Mode::Programmer => return Err(Error::InvalidDecimalPoint),
                 }
                 Ok(())
             }
@@ -1203,7 +1230,7 @@ enum ManipulatorOp {
 }
 
 impl ManipulatorOp {
-    fn act(self, state: &mut State) -> Result<(), String> {
+    fn act(self, state: &mut State) -> Result<(), Error> {
         match self {
             ManipulatorOp::Mode(op) => {
                 let (mode, cast) = op.transformation();
@@ -1220,10 +1247,14 @@ impl ManipulatorOp {
                     if state.memory.is_finite() {
                         Ok(())
                     } else {
-                        Err("memory cell is NaN or infinite".to_string())
+                        Err(Error::InvalidMemory {
+                            nan: state.memory.is_nan(),
+                        })
                     }
                 } else {
-                    Err("memory is only available in scientific mode idiot".to_string())
+                    Err(Error::BadMode {
+                        required: Mode::Scientific,
+                    })
                 }
             }
             ManipulatorOp::Angle(op) => {
@@ -1231,7 +1262,7 @@ impl ManipulatorOp {
                     state.angle = op.angle();
                     Ok(())
                 } else {
-                    Err("Angle can't be set to what it already is".to_string())
+                    Err(Error::BadAngleOnlyToggle)
                 }
             }
             ManipulatorOp::SecondPalette => {
@@ -1242,7 +1273,9 @@ impl ManipulatorOp {
                     }
                     Ok(())
                 } else {
-                    Err("2nd op is only valid in scientific mode".to_string())
+                    Err(Error::BadMode {
+                        required: Mode::Scientific,
+                    })
                 }
             }
             ManipulatorOp::Base(op) => {
@@ -1250,7 +1283,9 @@ impl ManipulatorOp {
                     state.base = op.base();
                     Ok(())
                 } else {
-                    Err("Can't set base outside programmer mode".to_string())
+                    Err(Error::BadMode {
+                        required: Mode::Programmer,
+                    })
                 }
             }
             ManipulatorOp::BasicUnary(op) => {
@@ -1259,7 +1294,10 @@ impl ManipulatorOp {
                     state.handle_nans()?;
                     Ok(())
                 } else {
-                    Err("Basic unary operation not available in current mode".to_string())
+                    Err(Error::BadModeEither {
+                        either: Mode::Basic,
+                        or: Mode::Scientific,
+                    })
                 }
             }
             ManipulatorOp::ScientificConst(op) => {
@@ -1267,7 +1305,9 @@ impl ManipulatorOp {
                     state.stack.unary_float(|_| op.eval());
                     Ok(())
                 } else {
-                    Err("Scientific constant not available in current mode".to_string())
+                    Err(Error::BadMode {
+                        required: Mode::Scientific,
+                    })
                 }
             }
             ManipulatorOp::ScientificUnary(op) => {
@@ -1277,10 +1317,14 @@ impl ManipulatorOp {
                         state.handle_nans()?;
                         Ok(())
                     } else {
-                        Err("this op is not available in the current palette".to_string())
+                        Err(Error::BadPalette {
+                            required: op.palette(),
+                        })
                     }
                 } else {
-                    Err("Scientific unary not available in current mode".to_string())
+                    Err(Error::BadMode {
+                        required: Mode::Scientific,
+                    })
                 }
             }
             ManipulatorOp::ProgrammerUnary(op) => {
@@ -1289,7 +1333,9 @@ impl ManipulatorOp {
                     // all programmer functions are total :)
                     Ok(())
                 } else {
-                    Err("Programmer unary not available in current mode".to_string())
+                    Err(Error::BadMode {
+                        required: Mode::Programmer,
+                    })
                 }
             }
             ManipulatorOp::UniversalBinary(op) => {
@@ -1306,10 +1352,14 @@ impl ManipulatorOp {
                         state.stack.binary_float(|x, y| op.eval(x, y))?;
                         state.handle_nans()
                     } else {
-                        Err("this op is not available in the current palette".to_string())
+                        Err(Error::BadPalette {
+                            required: op.palette(),
+                        })
                     }
                 } else {
-                    Err("Scientific binny not available in current mode".to_string())
+                    Err(Error::BadMode {
+                        required: Mode::Scientific,
+                    })
                 }
             }
             ManipulatorOp::ProgrammerBinary(op) => {
@@ -1318,17 +1368,22 @@ impl ManipulatorOp {
                     state.stack.binary_int(|x, y| op.eval(x, y))?;
                     state.handle_nans()
                 } else {
-                    Err("Prog binary not available in current mode".to_string())
+                    Err(Error::BadMode {
+                        required: Mode::Programmer,
+                    })
                 }
             }
             ManipulatorOp::Conversion(op) => {
-                if let Mode::Programmer = state.stack.mode() {
-                    Err("Unit conversions not available in programmer mode".to_string())
-                } else {
+                if let Mode::Basic | Mode::Scientific = state.stack.mode() {
                     let (scale, offset) = op.to_self();
                     let x = state.stack.peekf(0);
                     *x = *x * scale + offset;
                     Ok(())
+                } else {
+                    Err(Error::BadModeEither {
+                        either: Mode::Basic,
+                        or: Mode::Scientific,
+                    })
                 }
             }
         }
@@ -1344,14 +1399,16 @@ enum OutputOp {
 }
 
 impl OutputOp {
-    fn get_string(&self, state: &mut State) -> Result<String, String> {
+    fn get_string(&self, state: &mut State) -> Result<String, Error> {
         match self {
             OutputOp::Ascii => {
                 let x = *state.stack.peek(0);
                 if let Mode::Programmer = state.stack.mode() {
                     Ok(((x & 0x7f) as u8 as char).to_string())
                 } else {
-                    Err("ASCII output only available in programmer mode".to_string())
+                    Err(Error::BadMode {
+                        required: Mode::Programmer,
+                    })
                 }
             }
             OutputOp::Unicode => {
@@ -1359,9 +1416,11 @@ impl OutputOp {
                 if let Mode::Programmer = state.stack.mode() {
                     char::from_u32(x as u32 & 0x10ffff)
                         .map(|x| x.to_string())
-                        .ok_or("32-bit value is not a valid codepoint".to_string())
+                        .ok_or(Error::BadCodepoint)
                 } else {
-                    Err("Unicode output only available in programmer mode".to_string())
+                    Err(Error::BadMode {
+                        required: Mode::Programmer,
+                    })
                 }
             }
             OutputOp::LargeType => match (state.base, state.stack.mode()) {
@@ -1393,7 +1452,7 @@ enum Op {
 }
 
 impl Op {
-    fn act(self, state: &mut State) -> Result<(), String> {
+    fn act(self, state: &mut State) -> Result<(), Error> {
         match self {
             Op::NumericInput(op) => op.process_digit(state),
             Op::Manipulator(op) => {
@@ -1437,41 +1496,55 @@ pub fn exec(program: &str) -> Result<State, String> {
 
     program.split_ascii_whitespace().try_for_each(|word| {
         Op::from_str(word)
-            .map_err(|_| format!("Unknown word {word}"))
+            .map_err(|_| Error::UnknownWord)
             .and_then(|op| op.act(&mut state))
             .map_err(|e| {
+                let msg = match e {
+                    Error::NotEnoughStack { expected, got } => format!("Not enough values on the stack - expected {expected}, got {got}"),
+                    Error::InvalidResult { nan } => todo!(),
+                    Error::BadDigitBase { expected, got } => todo!(),
+                    Error::BadMode { required } => todo!(),
+                    Error::BadModeEither { either, or } => todo!(),
+                    Error::DuplicateDecimalPoint => todo!(),
+                    Error::InvalidDecimalPoint => todo!(),
+                    Error::InvalidMemory { nan } => todo!(),
+                    Error::BadAngleOnlyToggle => todo!(),
+                    Error::BadPalette { required } => todo!(),
+                    Error::BadCodepoint => todo!(),
+                    Error::UnknownWord => todo!(),
+                };
+                // `word` is always a valid slice within `program` so safety invariants are held
+                let byte_offset = unsafe { word.as_ptr().offset_from(program.as_ptr()) } as usize;
+                let line_number = program
+                    .as_bytes()
+                    .iter()
+                    .take(byte_offset)
+                    .filter(|&&c| c == b'\n')
+                    .count()
+                    + 1;
+                let line = program.lines().nth(line_number - 1).unwrap();
+                let col_start_bytes = unsafe { line.as_ptr().offset_from(program.as_ptr()) } as usize;
+                let col_offset_bytes = byte_offset - col_start_bytes;
 
-            // `word` is always a valid slice within `program` so safety invariants are held
-            let byte_offset = unsafe { word.as_ptr().offset_from(program.as_ptr()) } as usize;
-            let line_number = program
-                .as_bytes()
-                .iter()
-                .take(byte_offset)
-                .filter(|&&c| c == b'\n')
-                .count()
-                + 1;
-            let line = program.lines().nth(line_number - 1).unwrap();
-            let col_start_bytes = unsafe { line.as_ptr().offset_from(program.as_ptr()) } as usize;
-            let col_offset_bytes = byte_offset - col_start_bytes;
+                let col_offset_chars = UnicodeWidthStr::width(&line[..col_offset_bytes]);
+                let col_offset_len_chars = col_offset_chars + UnicodeWidthStr::width(word);
 
-            let col_offset_chars = UnicodeWidthStr::width(&line[..col_offset_bytes]);
-            let col_offset_len_chars = col_offset_chars + UnicodeWidthStr::width(word);
+                let pos = format!("{line_number}:{col_offset_chars}");
+                let fake_pos: String = (0..pos.len()).map(|_| ' ').collect();
 
-            let pos = format!("{line_number}:{col_offset_chars}");
-            let fake_pos: String = (0..pos.len()).map(|_| ' ').collect();
+                let pointer_line: String = (0..line.len())
+                    .map(|i| {
+                        if col_offset_chars <= i && i < col_offset_len_chars {
+                            '^'
+                        } else {
+                            ' '
+                        }
+                    })
+                    .collect();
 
-            let pointer_line: String = (0..line.len())
-                .map(|i| {
-                    if col_offset_chars <= i && i < col_offset_len_chars {
-                        '^'
-                    } else {
-                        ' '
-                    }
-                })
-                .collect();
-
-            format!("In state: {state:?}\n{pos} | {line}\n{fake_pos} | {pointer_line}\n{fake_pos} | Error: {e}")
-        })
+                format!("In state: {state:?}\n{pos} | {line}\n{fake_pos} | {pointer_line}\n{fake_pos} | Error: {msg}")
+            }
+        )
     })?;
     Ok(state)
 }
