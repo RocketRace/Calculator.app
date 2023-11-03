@@ -750,6 +750,10 @@ impl OtherScientificUnaryOp {
                 | OtherScientificUnaryOp::Log10
                 | OtherScientificUnaryOp::Exp
                 | OtherScientificUnaryOp::Ln
+                | OtherScientificUnaryOp::Sqrt
+                | OtherScientificUnaryOp::Cbrt
+                | OtherScientificUnaryOp::Inverse
+                | OtherScientificUnaryOp::Factorial
         ) {
             Palette::First
         } else {
@@ -1519,6 +1523,10 @@ impl OutputOp {
                 (Base::Octal, Mode::Programmer) => {
                     let x = *state.stack.peek(0);
                     Ok(format!("{x:o}\n"))
+                }
+                (Base::Decimal, Mode::Programmer) => {
+                    let x = *state.stack.peek(0);
+                    Ok(format!("{x}\n"))
                 }
                 (Base::Hexadecimal, Mode::Programmer) => {
                     let x = *state.stack.peek(0);
