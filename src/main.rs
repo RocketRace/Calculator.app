@@ -4,7 +4,11 @@ use std::{
 };
 
 use clap::Parser;
+use interpreter::ProgramCompletion;
 
+/// The Calculator.app interpreter.
+///
+/// When running a finished program, the `-lqr` flags are customary.
 #[derive(Parser)]
 struct Args {
     /// Run the program in a loop on a persistent input stack
@@ -13,15 +17,30 @@ struct Args {
     /// Enable verbose mode
     #[arg(short = 'V', long)]
     verbose: bool,
+    /// Suppress error messages
+    #[arg(short, long)]
+    quiet: bool,
+    /// Print the topmost value on the stack on exit
+    #[arg(short, long)]
+    result: bool,
     /// Input file to read program from. Defaults to standard input
     file: Option<String>,
     /// Initial stack contents (doubles). The elements are pushed to the stack in the given order
     nums: Vec<f64>,
 }
 
-fn exit_with_message(msg: &str, code: i32) -> ! {
-    eprintln!("{msg}");
-    exit(code)
+fn end_execution(completion: ProgramCompletion, quiet: bool, result: bool) -> ! {
+    if !quiet {
+        eprintln!("{}", completion.message);
+    }
+    if result {
+        let value = match completion.state.stack.peek_either() {
+            Ok(n) => n.to_string(),
+            Err(n) => n.to_string(),
+        };
+        println!("{value}")
+    }
+    exit(completion.code)
 }
 
 fn main() {
@@ -45,7 +64,10 @@ fn main() {
         .collect::<Result<_, _>>()
     {
         Ok(x) => x,
-        Err(()) => exit_with_message("Invalid floating point numbers in input", 1),
+        Err(()) => {
+            eprintln!("Unable to parse: Invalid floating point numbers in arguments");
+            exit(2)
+        }
     };
 
     match result {
@@ -57,11 +79,11 @@ fn main() {
             if args.looped {
                 let completion =
                     interpreter::exec_loop(&program, input, args.file.as_deref(), args.verbose);
-                exit_with_message(&completion.message, completion.code)
+                end_execution(completion, args.quiet, args.result)
             } else if let Err(completion) =
                 interpreter::exec_once(&program, input, args.file.as_deref(), args.verbose)
             {
-                exit_with_message(&completion.message, completion.code)
+                end_execution(completion, args.quiet, args.result)
             }
         }
     }

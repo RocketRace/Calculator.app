@@ -172,6 +172,7 @@ impl Display for Base {
     }
 }
 
+#[derive(Clone)]
 pub struct Stack {
     mode: Mode,
     raw: Vec<u64>,
@@ -200,6 +201,12 @@ impl Stack {
     }
     pub fn raw(&self) -> &[u64] {
         &self.raw
+    }
+    pub fn peek_either(&self) -> Result<f64, u64> {
+        match self.mode {
+            Mode::Basic | Mode::Scientific => Ok(f64::from_bits(self.raw[self.len() - 1])),
+            Mode::Programmer => Err(self.raw[self.len() - 1]),
+        }
     }
     pub fn set_mode(&mut self, mode: Mode, cast: Cast) {
         match (self.mode, mode) {
@@ -354,7 +361,7 @@ impl Display for Palette {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct State {
     decimal_digits: usize,
     pub stack: Stack,
@@ -1565,6 +1572,7 @@ impl Op {
 }
 
 pub struct ProgramCompletion {
+    pub state: State,
     pub code: i32,
     pub message: String,
 }
@@ -1661,6 +1669,7 @@ pub fn tick(
                 .join("\n");
 
                 return Err(ProgramCompletion {
+                    state,
                     code: return_code,
                     message: msg,
                 });
