@@ -89,6 +89,9 @@ fn main() {
                 match interpreter::exec_once(&program, input, args.file.as_deref(), args.verbose) {
                     Err(completion) => end_execution(completion, args.quiet, args.result),
                     Ok(state) => {
+                        if args.verbose {
+                            eprintln!("State: {state:?}");
+                        }
                         if args.result {
                             let value = match state.stack.peek_either() {
                                 Ok(n) => n.to_string(),

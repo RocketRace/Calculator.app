@@ -307,8 +307,8 @@ impl Stack {
 
     fn binary_float(&mut self, func: impl Fn(f64, f64) -> f64) -> Result<(), Error> {
         if self.len() >= 2 {
-            let y = self.popf();
-            let x = *self.peekf(0);
+            let x = self.popf();
+            let y = *self.peekf(0);
             self.setf(func(x, y));
             Ok(())
         } else {
@@ -866,20 +866,20 @@ enum UniversalBinaryOp {
 impl UniversalBinaryOp {
     fn eval_int(self, x: u64, y: u64) -> u64 {
         match self {
-            UniversalBinaryOp::Plus => x.wrapping_add(y),
-            UniversalBinaryOp::Minus => x.wrapping_sub(y),
-            UniversalBinaryOp::Times => x.wrapping_mul(y),
+            UniversalBinaryOp::Plus => y.wrapping_add(x),
+            UniversalBinaryOp::Minus => y.wrapping_sub(x),
+            UniversalBinaryOp::Times => y.wrapping_mul(x),
             // division by zero is defined as returning zero in programmer mode
-            UniversalBinaryOp::Divide => x.checked_div(y).unwrap_or(0),
+            UniversalBinaryOp::Divide => y.checked_div(x).unwrap_or(0),
         }
     }
 
     fn eval_float(self, x: f64, y: f64) -> f64 {
         match self {
-            UniversalBinaryOp::Plus => x + y,
-            UniversalBinaryOp::Minus => x - y,
-            UniversalBinaryOp::Times => x * y,
-            UniversalBinaryOp::Divide => x / y,
+            UniversalBinaryOp::Plus => y + x,
+            UniversalBinaryOp::Minus => y - x,
+            UniversalBinaryOp::Times => y * x,
+            UniversalBinaryOp::Divide => y / x,
         }
     }
 }
@@ -896,7 +896,10 @@ enum ScientificBinaryOp {
 
 impl ScientificBinaryOp {
     fn palette(self) -> Palette {
-        if matches!(self, ScientificBinaryOp::YToX | ScientificBinaryOp::LogYX) {
+        if matches!(
+            self,
+            ScientificBinaryOp::YToX | ScientificBinaryOp::LogYX | ScientificBinaryOp::EE
+        ) {
             Palette::First
         } else {
             Palette::Second
@@ -906,14 +909,14 @@ impl ScientificBinaryOp {
         match self {
             ScientificBinaryOp::XToY => {
                 // calculator.app specifies 0^0 to be nan
-                if x == 0.0 && y == 0.0 {
+                if y == 0.0 && x == 0.0 {
                     f64::NAN
                 } else {
                     x.powf(y)
                 }
             }
             ScientificBinaryOp::YToX => {
-                if x == 0.0 && y == 0.0 {
+                if y == 0.0 && x == 0.0 {
                     f64::NAN
                 } else {
                     y.powf(x)
@@ -921,7 +924,7 @@ impl ScientificBinaryOp {
             }
             ScientificBinaryOp::LogYX => x.log(y),
             ScientificBinaryOp::YthRootX => x.powf(1.0 / y),
-            ScientificBinaryOp::EE => x * 10.0f64.powf(y),
+            ScientificBinaryOp::EE => y * 10.0f64.powf(x),
         }
     }
 }
