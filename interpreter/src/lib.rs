@@ -91,9 +91,54 @@ enum Error {
     BadPalette { required: Palette },
     BadCodepoint,
     UnknownWord,
+    Quit,
 }
 
-impl Error {}
+impl Error {
+    fn message(&self) -> String {
+        match self {
+            Error::NotEnoughStack { expected, got } => {
+                format!("Not enough values on the stack - expected {expected}, got {got}")
+            }
+            Error::InvalidResult { nan } => {
+                if *nan {
+                    "The operation returned a NaN value".to_string()
+                } else {
+                    "The operation returned an infinite value".to_string()
+                }
+            }
+            Error::BadDigitBase { expected } => {
+                format!("This digit can only be used when the base is set to {expected}")
+            }
+            Error::BadMode { required } => {
+                format!("This operation is only available in {required} mode")
+            }
+            Error::BadModeEither { either, or } => {
+                format!("This operation is only available in either {either} mode or {or} mode")
+            }
+            Error::DuplicateDecimalPoint => "The number already has a decimal point".to_string(),
+            Error::InvalidDecimalPoint => {
+                "Decimal points can only be used for floating point numbers".to_string()
+            }
+            Error::InvalidMemory { nan } => {
+                if *nan {
+                    "The memory cell contains a NaN value".to_string()
+                } else {
+                    "The memory cell contains an infinite value".to_string()
+                }
+            }
+            Error::BadAngleOnlyToggle => {
+                "The angle cannot be set to what it already is".to_string()
+            }
+            Error::BadPalette { required } => {
+                format!("This operation is only available with the {required} palette")
+            }
+            Error::BadCodepoint => "The input integer is not a valid Unicode codepoint".to_string(),
+            Error::UnknownWord => "Unknown word".to_string(),
+            Error::Quit => "Quit".to_string(),
+        }
+    }
+}
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 enum Angle {
@@ -321,6 +366,21 @@ pub struct State {
 }
 
 impl State {
+    fn new(raw_stack: Vec<u64>) -> Self {
+        Self {
+            stack: Stack {
+                mode: Mode::Basic,
+                raw: raw_stack,
+            },
+            input: InputState::Empty,
+            decimal_digits: 0,
+            angle: Angle::Degrees,
+            palette: Palette::First,
+            memory: 0.0,
+            base: Base::Hexadecimal,
+        }
+    }
+
     fn handle_nans(&mut self) -> Result<(), Error> {
         let top = *self.stack.peekf(0);
         if top.is_nan() {
@@ -1471,6 +1531,7 @@ enum Op {
     Output(OutputOp),
     C = "C",
     AC = "AC",
+    Quit = "⌘Q" | "Q",
 }
 
 impl Op {
@@ -1498,113 +1559,113 @@ impl Op {
                 state.input = InputState::Empty;
                 Ok(())
             }
+            Op::Quit => Err(Error::Quit),
         }
     }
 }
 
-pub fn exec(program: &str) -> Result<State, String> {
-    let mut state = State {
-        stack: Stack {
-            mode: Mode::Basic,
-            raw: vec![0],
-        },
-        input: InputState::Empty,
-        decimal_digits: 0,
-        angle: Angle::Degrees,
-        palette: Palette::First,
-        memory: 0.0,
-        base: Base::Hexadecimal,
-    };
+pub struct ProgramCompletion {
+    pub code: i32,
+    pub message: String,
+}
 
-    program.split_ascii_whitespace().try_for_each(|word| {
-        Op::from_str(word)
-            .map_err(|_| Error::UnknownWord)
-            .and_then(|op| op.act(&mut state))
-            .map_err(|e| {
-                let msg = match e {
-                    Error::NotEnoughStack { expected, got } => {
-                        format!("Not enough values on the stack - expected {expected}, got {got}")
-                    }
-                    Error::InvalidResult { nan } => {
-                        if nan {
-                            "The operation returned a NaN value".to_string()
-                        } else {
-                            "The operation returned an infinite value".to_string()
-                        }
-                    }
-                    Error::BadDigitBase { expected } => {
-                        format!("This digit can only be used when the base is set to {expected}")
-                    }
-                    Error::BadMode { required } => {
-                        format!("This operation is only available in {required} mode")
-                    }
-                    Error::BadModeEither { either, or } => {
-                        format!(
-                            "This operation is only available in either {either} mode or {or} mode"
-                        )
-                    }
-                    Error::DuplicateDecimalPoint => {
-                        "The number already has a decimal point".to_string()
-                    }
-                    Error::InvalidDecimalPoint => {
-                        "Decimal points can only be used for floating point numbers".to_string()
-                    }
-                    Error::InvalidMemory { nan } => {
-                        if nan {
-                            "The memory cell contains a NaN value".to_string()
-                        } else {
-                            "The memory cell contains an infinite value".to_string()
-                        }
-                    }
-                    Error::BadAngleOnlyToggle => {
-                        "The angle cannot be set to what it already is".to_string()
-                    }
-                    Error::BadPalette { required } => {
-                        format!("This operation is only available with the {required} palette")
-                    }
-                    Error::BadCodepoint => {
-                        "The input integer is not a valid Unicode codepoint".to_string()
-                    }
-                    Error::UnknownWord => "Unknown word".to_string(),
+pub fn exec_loop(
+    program: &str,
+    input: Vec<f64>,
+    file: Option<&str>,
+    verbose: bool,
+) -> ProgramCompletion {
+    let integers = input.iter().map(|x| x.to_bits()).collect();
+    let raw = if input.is_empty() { vec![0] } else { integers };
+    let mut state = State::new(raw);
+    loop {
+        match tick(program, state, file, verbose) {
+            Ok(new_state) => state = new_state,
+            Err(e) => break e,
+        }
+    }
+}
+
+pub fn exec_once(
+    program: &str,
+    input: Vec<f64>,
+    file: Option<&str>,
+    verbose: bool,
+) -> Result<State, ProgramCompletion> {
+    let integers = input.iter().map(|x| x.to_bits()).collect();
+    let raw = if input.is_empty() { vec![0] } else { integers };
+    let state = State::new(raw);
+    tick(program, state, file, verbose)
+}
+
+pub fn tick(
+    program: &str,
+    mut state: State,
+    file: Option<&str>,
+    verbose: bool,
+) -> Result<State, ProgramCompletion> {
+    for (line_number, line) in program.lines().enumerate() {
+        let mut word_end_chars = 0;
+        let mut word_end_visual = 0;
+        for chunk in line.split_inclusive(&[' ', '\t']) {
+            let word = chunk.trim_end_matches(&[' ', '\t']);
+            word_end_chars += chunk.chars().count();
+            word_end_visual += UnicodeWidthStr::width(chunk);
+
+            if word.is_empty() {
+                continue;
+            }
+
+            if let Err(e) = Op::from_str(word)
+                .map_err(|_| Error::UnknownWord)
+                .and_then(|op| op.act(&mut state))
+            {
+                let msg = e.message();
+
+                let return_code = if let Error::Quit = e { 0 } else { 1 };
+
+                let word_width = UnicodeWidthStr::width(word);
+
+                let word_start_chars = word_end_chars - chunk.chars().count();
+                let loc = (line_number + 1).to_string();
+                let pad = " ".repeat(loc.len());
+
+                let word_start_visual = word_end_visual - UnicodeWidthStr::width(chunk);
+                let pointer_line = " ".repeat(word_start_visual) + &"^".repeat(word_width);
+
+                let error_report = if return_code == 0 {
+                    "Quit".to_string()
+                } else {
+                    format!("Error: {msg}")
                 };
-                // `word` is always a valid slice within `program` so safety invariants are held
-                let byte_offset = unsafe { word.as_ptr().offset_from(program.as_ptr()) } as usize;
-                let line_number = program
-                    .as_bytes()
-                    .iter()
-                    .take(byte_offset)
-                    .filter(|&&c| c == b'\n')
-                    .count()
-                    + 1;
-                let line = program.lines().nth(line_number - 1).unwrap();
-                let col_offset_chars =
-                    unsafe { line.as_ptr().offset_from(program.as_ptr()) } as usize;
-                let col_offset_bytes = byte_offset - col_offset_chars;
 
-                let col_chars = UnicodeWidthStr::width(&line[..col_offset_bytes]);
-                let col_len_chars = col_chars + UnicodeWidthStr::width(word);
+                let file_name = file.unwrap_or("(stdin)");
 
-                let pos = format!("{line_number}:{col_offset_chars}");
-                let fake_pos: String = (0..pos.len()).map(|_| ' ').collect();
+                let state_suffix = if verbose {
+                    format!("\n{pad} $ In state: {state:?}")
+                } else {
+                    String::new()
+                };
 
-                let pointer_line: String = (0..line.len())
-                    .map(|i| {
-                        if col_chars <= i && i < col_len_chars {
-                            '^'
-                        } else {
-                            ' '
-                        }
-                    })
-                    .collect();
-
-                [
-                    format!("In state: {state:?}\n{pos}"),
-                    format!("{pos} | {line}\n{fake_pos}"),
-                    format!("{fake_pos} | {pointer_line}\n{fake_pos}"),
-                    format!("{fake_pos} | Error: {msg}"),
+                let msg = [
+                    format!(
+                        "{pad} > {file_name}:{}:{}{state_suffix}",
+                        line_number + 1,
+                        word_start_chars + 1
+                    ),
+                    format!("{pad} |"),
+                    format!("{loc} | {line}"),
+                    format!("{pad} | {pointer_line}"),
+                    format!("{pad} * {error_report}"),
                 ]
-                .join("\n")
-            })
-    })?;
+                .join("\n");
+
+                return Err(ProgramCompletion {
+                    code: return_code,
+                    message: msg,
+                });
+            }
+        }
+    }
     Ok(state)
 }
