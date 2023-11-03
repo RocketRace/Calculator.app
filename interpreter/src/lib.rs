@@ -58,7 +58,10 @@ mod gamma_fn {
     /// is derived from "An Analysis of the Lanczos Gamma Approximation",
     /// Glendon Ralph Pugh, 2004 p. 116
     pub fn gamma(x: f64) -> f64 {
-        if x < 0.5 {
+        if x.is_finite() && x.round() == x && x >= 1.0 {
+            // integer, just do a looping factorial
+            (1..x as u64).product::<u64>() as f64
+        } else if x < 0.5 {
             let s = GAMMA_DK
                 .iter()
                 .enumerate()

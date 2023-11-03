@@ -80,10 +80,20 @@ fn main() {
                 let completion =
                     interpreter::exec_loop(&program, input, args.file.as_deref(), args.verbose);
                 end_execution(completion, args.quiet, args.result)
-            } else if let Err(completion) =
-                interpreter::exec_once(&program, input, args.file.as_deref(), args.verbose)
-            {
-                end_execution(completion, args.quiet, args.result)
+            } else {
+                match interpreter::exec_once(&program, input, args.file.as_deref(), args.verbose) {
+                    Err(completion) => end_execution(completion, args.quiet, args.result),
+                    Ok(state) => {
+                        if args.result {
+                            let value = match state.stack.peek_either() {
+                                Ok(n) => n.to_string(),
+                                Err(n) => n.to_string(),
+                            };
+                            println!("{value}")
+                        }
+                        exit(0)
+                    }
+                }
             }
         }
     }
