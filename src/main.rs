@@ -8,7 +8,7 @@ use interpreter::ProgramCompletion;
 
 /// The Calculator.app interpreter.
 ///
-/// When running a finished program, the `-lqr` flags are customary.
+/// When running a finished program, the `-rql` flags are customary.
 #[derive(Parser)]
 struct Args {
     /// Run the program in a loop on a persistent input stack
@@ -45,6 +45,11 @@ fn end_execution(completion: ProgramCompletion, quiet: bool, result: bool) -> ! 
 
 fn main() {
     let args = Args::parse();
+
+    let dev_mode = !args.looped | !args.quiet | !args.result;
+    if dev_mode {
+        eprintln!("Running program in development mode (use `-rql` flags for complete files)")
+    }
 
     let result = if let Some(filename) = &args.file {
         std::fs::read_to_string(filename)
