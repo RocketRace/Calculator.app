@@ -899,10 +899,7 @@ impl ScientificBinaryOp {
     fn palette(self) -> Palette {
         if matches!(
             self,
-            ScientificBinaryOp::YToX
-                | ScientificBinaryOp::LogYX
-                | ScientificBinaryOp::EE
-                | ScientificBinaryOp::XthRootY
+            ScientificBinaryOp::YToX | ScientificBinaryOp::EE | ScientificBinaryOp::XthRootY
         ) {
             Palette::First
         } else {
