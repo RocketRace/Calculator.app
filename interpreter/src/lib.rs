@@ -891,6 +891,7 @@ enum ScientificBinaryOp {
     YToX = "yˣ" | "y^x",
     LogYX = "logᵧ" | "logy",
     YthRootX = "ʸ√x" | "yVx",
+    XthRootY = "ˣ√y" | "xVy",
     EE = "EE",
 }
 
@@ -898,7 +899,10 @@ impl ScientificBinaryOp {
     fn palette(self) -> Palette {
         if matches!(
             self,
-            ScientificBinaryOp::YToX | ScientificBinaryOp::LogYX | ScientificBinaryOp::EE
+            ScientificBinaryOp::YToX
+                | ScientificBinaryOp::LogYX
+                | ScientificBinaryOp::EE
+                | ScientificBinaryOp::XthRootY
         ) {
             Palette::First
         } else {
@@ -923,7 +927,20 @@ impl ScientificBinaryOp {
                 }
             }
             ScientificBinaryOp::LogYX => x.log(y),
-            ScientificBinaryOp::YthRootX => x.powf(1.0 / y),
+            ScientificBinaryOp::YthRootX => {
+                if y == 0.0 && x == 0.0 {
+                    f64::NAN
+                } else {
+                    x.powf(1.0 / y)
+                }
+            }
+            ScientificBinaryOp::XthRootY => {
+                if y == 0.0 && x == 0.0 {
+                    f64::NAN
+                } else {
+                    y.powf(1.0 / x)
+                }
+            }
             ScientificBinaryOp::EE => y * 10.0f64.powf(x),
         }
     }
