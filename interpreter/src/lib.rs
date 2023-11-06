@@ -894,7 +894,6 @@ enum ScientificBinaryOp {
     XToY = "xʸ" | "x^y",
     YToX = "yˣ" | "y^x",
     LogYX = "logᵧ" | "logy",
-    YthRootX = "ʸ√x" | "yVx",
     XthRootY = "ˣ√y" | "xVy",
     EE = "EE",
 }
@@ -928,13 +927,6 @@ impl ScientificBinaryOp {
                 }
             }
             ScientificBinaryOp::LogYX => x.log(y),
-            ScientificBinaryOp::YthRootX => {
-                if y == 0.0 && x == 0.0 {
-                    f64::NAN
-                } else {
-                    x.powf(1.0 / y)
-                }
-            }
             ScientificBinaryOp::XthRootY => {
                 if y == 0.0 && x == 0.0 {
                     f64::NAN
