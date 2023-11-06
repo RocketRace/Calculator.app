@@ -291,11 +291,13 @@ impl Stack {
         self.setf(func(x))
     }
 
-    fn binary_int(&mut self, func: impl Fn(u64, u64) -> u64) -> Result<(), Error> {
+    fn binary_int(&mut self, func: impl Fn(u64, u64) -> Option<u64>) -> Result<(), Error> {
         if self.len() >= 2 {
             let y = self.pop();
             let x = *self.peek(0);
-            self.set(func(x, y));
+            if let Some(result) = func(x, y) {
+                self.set(result);
+            }
             Ok(())
         } else {
             Err(Error::NotEnoughStack {
@@ -864,13 +866,15 @@ enum UniversalBinaryOp {
 }
 
 impl UniversalBinaryOp {
-    fn eval_int(self, x: u64, y: u64) -> u64 {
+    fn eval_int(self, x: u64, y: u64) -> Option<u64> {
         match self {
-            UniversalBinaryOp::Plus => y.wrapping_add(x),
-            UniversalBinaryOp::Minus => y.wrapping_sub(x),
-            UniversalBinaryOp::Times => y.wrapping_mul(x),
-            // division by zero is defined as returning zero in programmer mode
-            UniversalBinaryOp::Divide => y.checked_div(x).unwrap_or(0),
+            UniversalBinaryOp::Plus => Some(y.wrapping_add(x)),
+            UniversalBinaryOp::Minus => Some(y.wrapping_sub(x)),
+            UniversalBinaryOp::Times => Some(y.wrapping_mul(x)),
+            // division by zero is defined as a noop in programmer mode
+            // that makes some of this infrastructure annoying to deal with due to the
+            // extra option involved
+            UniversalBinaryOp::Divide => y.checked_div(x),
         }
     }
 
@@ -955,15 +959,15 @@ enum ProgrammerBinaryOp {
 }
 
 impl ProgrammerBinaryOp {
-    fn eval(self, x: u64, y: u64) -> u64 {
-        match self {
+    fn eval(self, x: u64, y: u64) -> Option<u64> {
+        Some(match self {
             ProgrammerBinaryOp::And => x & y,
             ProgrammerBinaryOp::Or => x | y,
             ProgrammerBinaryOp::Nor => !(x | y),
             ProgrammerBinaryOp::Xor => x ^ y,
             ProgrammerBinaryOp::XLeftShiftY => x << y,
             ProgrammerBinaryOp::XRightShiftY => x >> y,
-        }
+        })
     }
 }
 
@@ -1326,15 +1330,15 @@ generate_conversions! {
 #[operation]
 #[derive(Copy, Clone)]
 enum ManipulatorOp {
-    Mode(ModeOp),
-    Rpn(RpnOp),
-    Memory(MemoryOp),
-    Angle(AngleOp),
-    SecondPalette = "2ⁿᵈ" | "2nd",
-    Base(BaseOp),
-    UniversalBinary(UniversalBinaryOp),
-    BasicUnary(NumericUnaryOp),
-    ScientificConst(ScientificConstOp),
+    Mode(ModeOp),                       //
+    Rpn(RpnOp),                         //
+    Memory(MemoryOp),                   //
+    Angle(AngleOp),                     //
+    SecondPalette = "2ⁿᵈ" | "2nd",      //
+    Base(BaseOp),                       //
+    UniversalBinary(UniversalBinaryOp), //
+    BasicUnary(NumericUnaryOp),         //
+    ScientificConst(ScientificConstOp), //
     ScientificUnary(ScientificUnaryOp),
     ScientificBinary(ScientificBinaryOp),
     ProgrammerUnary(ProgrammerUnaryOp),
