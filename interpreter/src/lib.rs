@@ -1322,15 +1322,15 @@ generate_conversions! {
 #[operation]
 #[derive(Copy, Clone)]
 enum ManipulatorOp {
-    Mode(ModeOp),                       //
-    Rpn(RpnOp),                         //
-    Memory(MemoryOp),                   //
-    Angle(AngleOp),                     //
-    SecondPalette = "2ⁿᵈ" | "2nd",      //
-    Base(BaseOp),                       //
-    UniversalBinary(UniversalBinaryOp), //
-    BasicUnary(NumericUnaryOp),         //
-    ScientificConst(ScientificConstOp), //
+    Mode(ModeOp),
+    Rpn(RpnOp),
+    Memory(MemoryOp),
+    Angle(AngleOp),
+    SecondPalette = "2ⁿᵈ" | "2nd",
+    Base(BaseOp),
+    UniversalBinary(UniversalBinaryOp),
+    BasicUnary(NumericUnaryOp),
+    ScientificConst(ScientificConstOp),
     ScientificUnary(ScientificUnaryOp),
     ScientificBinary(ScientificBinaryOp),
     ProgrammerUnary(ProgrammerUnaryOp),
