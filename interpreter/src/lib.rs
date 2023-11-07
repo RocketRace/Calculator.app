@@ -1532,24 +1532,20 @@ impl OutputOp {
                     })
                 }
             }
-            OutputOp::LargeType => match (state.base, state.stack.mode()) {
-                (Base::Octal, Mode::Programmer) => {
+            OutputOp::LargeType => {
+                if let Mode::Programmer = state.stack.mode() {
                     let x = *state.stack.peek(0);
-                    Ok(format!("{x:o}\n"))
-                }
-                (Base::Decimal, Mode::Programmer) => {
-                    let x = *state.stack.peek(0);
-                    Ok(format!("{x}\n"))
-                }
-                (Base::Hexadecimal, Mode::Programmer) => {
-                    let x = *state.stack.peek(0);
-                    Ok(format!("{x:x}\n"))
-                }
-                _ => {
+                    let string = match state.base {
+                        Base::Octal => format!("{x:o}\n"),
+                        Base::Decimal => format!("{x}\n"),
+                        Base::Hexadecimal => format!("{x:x}\n"),
+                    };
+                    Ok(string)
+                } else {
                     let x = *state.stack.peekf(0);
                     Ok(format!("{x}\n"))
                 }
-            },
+            }
         }
     }
 }
