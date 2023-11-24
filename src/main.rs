@@ -34,7 +34,7 @@ fn end_execution(completion: ProgramCompletion, quiet: bool, result: bool) -> ! 
         eprintln!("{}", completion.message);
     }
     if result {
-        let value = match completion.state.stack.peek_either() {
+        let value = match completion.state.stack.peek() {
             Ok(n) => n.to_string(),
             Err(n) => n.to_string(),
         };
@@ -93,7 +93,7 @@ fn main() {
                             eprintln!("State: {state:?}");
                         }
                         if args.result {
-                            let value = match state.stack.peek_either() {
+                            let value = match state.stack.peek() {
                                 Ok(n) => n.to_string(),
                                 Err(n) => n.to_string(),
                             };

@@ -205,7 +205,7 @@ impl Stack {
     pub fn raw(&self) -> &[u64] {
         &self.raw
     }
-    pub fn peek_either(&self) -> Result<f64, u64> {
+    pub fn peek(&self) -> Result<f64, u64> {
         match self.mode {
             Mode::Basic | Mode::Scientific => Ok(f64::from_bits(self.raw[self.len() - 1])),
             Mode::Programmer => Err(self.raw[self.len() - 1]),
@@ -232,23 +232,23 @@ impl Stack {
         self.mode = mode;
     }
 
-    fn push(&mut self, n: u64) {
+    fn push_int(&mut self, n: u64) {
         self.raw.push(n)
     }
 
-    fn pop(&mut self) -> u64 {
+    fn pop_int(&mut self) -> u64 {
         let x = self
             .raw
             .pop()
             .expect("unreachable, the length should always be >= 1");
         if self.len() == 0 {
-            self.push(0) // u64 and f64 zero have the same bit representation
+            self.push_int(0) // u64 and f64 zero have the same bit representation
         }
         x
     }
 
-    fn popf(&mut self) -> f64 {
-        f64::from_bits(self.pop())
+    fn pop_float(&mut self) -> f64 {
+        f64::from_bits(self.pop_int())
     }
 
     fn len(&self) -> usize {
@@ -260,12 +260,12 @@ impl Stack {
         self.raw.swap(last, last.saturating_sub(1))
     }
 
-    fn peek(&mut self, from_top: usize) -> &mut u64 {
+    fn get_int(&mut self, from_top: usize) -> &mut u64 {
         let len = self.raw.len();
         &mut self.raw[len - 1 - from_top]
     }
 
-    fn peekf(&mut self, from_top: usize) -> &mut f64 {
+    fn get_float(&mut self, from_top: usize) -> &mut f64 {
         let len = self.raw.len();
         let ptr = &mut self.raw[len - 1 - from_top];
         // the original pointer is constructed safely,
@@ -273,30 +273,30 @@ impl Stack {
         unsafe { transmute::<&mut u64, &mut f64>(ptr) }
     }
 
-    fn set(&mut self, n: u64) {
-        *self.peek(0) = n;
+    fn const_int(&mut self, n: u64) {
+        *self.get_int(0) = n;
     }
 
-    fn setf(&mut self, x: f64) {
-        *self.peekf(0) = x;
+    fn const_float(&mut self, x: f64) {
+        *self.get_float(0) = x;
     }
 
     fn unary_int(&mut self, func: impl Fn(u64) -> u64) {
-        let x = *self.peek(0);
-        self.set(func(x))
+        let x = *self.get_int(0);
+        self.const_int(func(x))
     }
 
     fn unary_float(&mut self, func: impl Fn(f64) -> f64) {
-        let x = *self.peekf(0);
-        self.setf(func(x))
+        let x = *self.get_float(0);
+        self.const_float(func(x))
     }
 
     fn binary_int(&mut self, func: impl Fn(u64, u64) -> Option<u64>) -> Result<(), Error> {
         if self.len() >= 2 {
-            let y = self.pop();
-            let x = *self.peek(0);
+            let y = self.pop_int();
+            let x = *self.get_int(0);
             if let Some(result) = func(x, y) {
-                self.set(result);
+                self.const_int(result);
             }
             Ok(())
         } else {
@@ -309,9 +309,9 @@ impl Stack {
 
     fn binary_float(&mut self, func: impl Fn(f64, f64) -> f64) -> Result<(), Error> {
         if self.len() >= 2 {
-            let x = self.popf();
-            let y = *self.peekf(0);
-            self.setf(func(x, y));
+            let x = self.pop_float();
+            let y = *self.get_float(0);
+            self.const_float(func(x, y));
             Ok(())
         } else {
             Err(Error::NotEnoughStack {
@@ -394,7 +394,7 @@ impl State {
     }
 
     fn handle_nans(&mut self) -> Result<(), Error> {
-        let top = *self.stack.peekf(0);
+        let top = *self.stack.get_float(0);
         if top.is_nan() {
             Err(Error::InvalidResult { nan: true })
         } else if top.is_infinite() {
@@ -408,8 +408,8 @@ impl State {
             InputState::Empty | InputState::Done => {
                 self.input = InputState::Integral;
                 match self.stack.mode() {
-                    Mode::Basic | Mode::Scientific => *self.stack.peekf(0) = digit as f64,
-                    Mode::Programmer => *self.stack.peek(0) = digit as u64,
+                    Mode::Basic | Mode::Scientific => *self.stack.get_float(0) = digit as f64,
+                    Mode::Programmer => *self.stack.get_int(0) = digit as u64,
                 }
                 Ok(())
             }
@@ -588,11 +588,11 @@ impl RpnOp {
             RpnOp::RotateDown => stack.raw.rotate_right(1),
             RpnOp::RotateUp => stack.raw.rotate_left(1),
             RpnOp::Drop => {
-                stack.pop();
+                stack.pop_int();
             }
             RpnOp::Enter => {
-                let x = *stack.peek(0);
-                stack.push(x);
+                let x = *stack.get_int(0);
+                stack.push_int(x);
             }
         }
     }
@@ -610,9 +610,9 @@ enum MemoryOp {
 impl MemoryOp {
     fn act(self, stack: &mut Stack, mem: &mut f64) {
         match self {
-            MemoryOp::Recall => *stack.peekf(0) = *mem,
-            MemoryOp::Add => *mem += *stack.peekf(0),
-            MemoryOp::Subtract => *mem -= *stack.peekf(0),
+            MemoryOp::Recall => *stack.get_float(0) = *mem,
+            MemoryOp::Add => *mem += *stack.get_float(0),
+            MemoryOp::Subtract => *mem -= *stack.get_float(0),
             MemoryOp::Clear => *mem = 0.0,
         }
     }
@@ -1485,7 +1485,7 @@ impl ManipulatorOp {
             ManipulatorOp::Conversion(op) => {
                 if let Mode::Basic | Mode::Scientific = state.stack.mode() {
                     let (scale, offset) = op.to_self();
-                    let x = state.stack.peekf(0);
+                    let x = state.stack.get_float(0);
                     *x = *x * scale + offset;
                     Ok(())
                 } else {
@@ -1511,7 +1511,7 @@ impl OutputOp {
     fn get_string(&self, state: &mut State) -> Result<String, Error> {
         match self {
             OutputOp::Ascii => {
-                let x = *state.stack.peek(0);
+                let x = *state.stack.get_int(0);
                 if let Mode::Programmer = state.stack.mode() {
                     Ok(((x & 0x7f) as u8 as char).to_string())
                 } else {
@@ -1521,7 +1521,7 @@ impl OutputOp {
                 }
             }
             OutputOp::Unicode => {
-                let x = *state.stack.peek(0);
+                let x = *state.stack.get_int(0);
                 if let Mode::Programmer = state.stack.mode() {
                     char::from_u32(x as u32 & 0x10ffff)
                         .map(|x| x.to_string())
@@ -1534,7 +1534,7 @@ impl OutputOp {
             }
             OutputOp::LargeType => {
                 if let Mode::Programmer = state.stack.mode() {
-                    let x = *state.stack.peek(0);
+                    let x = *state.stack.get_int(0);
                     let string = match state.base {
                         Base::Octal => format!("{x:o}\n"),
                         Base::Decimal => format!("{x}\n"),
@@ -1542,7 +1542,7 @@ impl OutputOp {
                     };
                     Ok(string)
                 } else {
-                    let x = *state.stack.peekf(0);
+                    let x = *state.stack.get_float(0);
                     Ok(format!("{x}\n"))
                 }
             }
@@ -1576,7 +1576,7 @@ impl Op {
             Op::C => {
                 state.input = InputState::Empty;
                 state.decimal_digits = 0;
-                *state.stack.peek(0) = 0;
+                *state.stack.get_int(0) = 0;
                 Ok(())
             }
             Op::AC => {
@@ -1675,11 +1675,13 @@ pub fn tick(
                     String::new()
                 };
 
+                let visual_line_number = line_number + 1;
+                let visual_word_start_chars = word_start_chars + 1;
+
                 let msg = [
                     format!(
                         "{pad} > {file_name}:{}:{}{state_suffix}",
-                        line_number + 1,
-                        word_start_chars + 1
+                        visual_line_number, visual_word_start_chars
                     ),
                     format!("{pad} |"),
                     format!("{loc} | {line}"),
